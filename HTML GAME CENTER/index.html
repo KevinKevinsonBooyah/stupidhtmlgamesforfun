@@ -1,1 +1,56 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="icon" type="image/png" sizes="48x48" href="../favicon.png"><link rel="apple-touch-icon" href="../favicon.png"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>HTML GAME CENTER</title><meta name="theme-color" content="#101325"><style>*{box-sizing:border-box}body{margin:0;min-height:100dvh;background:radial-gradient(ellipse at 20% 0%,#28345d,#101325 58%);font:16px system-ui,-apple-system,sans-serif;color:#f4f6ff}main{max-width:900px;margin:auto;padding:clamp(20px,5vw,55px)}.brand{display:flex;align-items:center;gap:12px;font-size:13px;font-weight:800;letter-spacing:2px;color:#a7b9ff}.logo{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:#6475e9;font-size:25px}h1{font-size:clamp(38px,8vw,75px);line-height:.99;letter-spacing:-2px;margin:42px 0 16px}h1 span{color:#91a5ff}.lead{max-width:550px;color:#b6c1d8;line-height:1.6;margin-bottom:45px}.section{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.section h2{font-size:19px;margin:0}.pill{border:1px solid #57658e;color:#b8c9ee;border-radius:99px;padding:6px 12px;font-size:12px}.games{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px}.game{display:block;text-decoration:none;color:inherit;background:#1b2340;border:1px solid #3c4a71;border-radius:22px;overflow:hidden;transition:transform .2s,border-color .2s}.game:hover{transform:translateY(-4px);border-color:#a5b4ff}.art{height:195px;display:grid;place-items:center;background:radial-gradient(circle at 60% 30%,#256b8e,#1b2340 75%);position:relative;overflow:hidden}.art .moon{font-size:88px;filter:drop-shadow(0 0 35px #59ccff77)}.art .house{position:absolute;bottom:0;font-size:83px;left:12%}.art .time{position:absolute;right:18px;top:17px;font-weight:900;letter-spacing:1px;color:#f0f1fa;background:#10182d9c;border-radius:8px;padding:6px 9px}.details{padding:20px}.details h3{font-size:21px;margin:0 0 8px}.details p{font-size:14px;line-height:1.5;color:#b3bfdb;margin:0 0 18px}.bottom{display:flex;justify-content:space-between;align-items:center}.tag{font-size:12px;color:#a3b5f7}.play{font-weight:800;color:#b6c6ff}.coming{min-height:280px;display:grid;place-items:center;text-align:center;background:#171d32;border:1px dashed #495476;border-radius:22px;color:#9ba9c8;padding:25px}.coming b{display:block;color:#c3cce4;font-size:18px;margin:10px 0}footer{color:#7f8cae;font-size:12px;margin-top:45px}</style></head><body><main><div class="brand"><span class="logo">🎮</span> HTML GAME CENTER</div><h1>Small games.<br><span>Big nonsense.</span></h1><p class="lead">Welcome to the HTML Game Center. A collection of weird little browser games you can play on your phone or computer. No downloads, no accounts, just games.</p><div class="section"><h2>Game library</h2><span class="pill">1 GAME AVAILABLE</span></div><div class="games"><a class="game" href="../liquid-lab/"><div class="art"><span class="moon">💧</span><span class="house">🌊</span><span class="time">FLUID SIM</span></div><div class="details"><h3>Liquid Lab: Interactive Fluid Simulator</h3><p>Pour, splash, stir, and sculpt flowing liquid. Customize velocity, gravity, viscosity, pressure, colors, and more.</p><div class="bottom"><span class="tag">Physics · Sandbox · Mobile friendly</span><span class="play">PLAY →</span></div></div></a><div class="coming"><div><div style="font-size:42px">🕹️</div><b>More chaos coming soon</b><span>The next questionable idea goes here.</span></div></div></div><footer>Made for fun. Powered by HTML, CSS, and JavaScript.</footer></main></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#141516">
+<link rel="icon" type="image/png" href="../hub-dog-icon.png?v=2">
+<link rel="apple-touch-icon" href="../hub-dog-icon.png?v=2">
+<title>HTML GAME CENTER</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:#121416;color:#f1f1f0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.4}
+main{width:min(740px,100%);margin:auto;padding:25px 20px 50px}
+header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #343638;padding-bottom:16px;gap:10px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand img{width:46px;height:46px;border:1px solid #505253;border-radius:12px;object-fit:cover;display:block;background:#36383a}
+h1{font-size:17px;letter-spacing:-.02em;margin:0;line-height:1.2}
+.subtitle{font-size:12px;color:#999b9e;margin:3px 0 0}
+.count{font-size:11px;background:#222528;color:#c3c5c8;border:1px solid #36393b;border-radius:7px;padding:6px 9px;white-space:nowrap}
+.intro{padding:22px 1px 19px}
+.intro h2{font-size:23px;letter-spacing:-.035em;margin:0 0 6px}
+.intro p{font-size:13px;color:#a1a4a9;margin:0;max-width:550px}
+.section-title{color:#94989c;font-weight:750;font-size:11px;letter-spacing:.1em;text-transform:uppercase;margin:4px 0 10px}
+.games{display:grid;gap:10px}
+.game{display:grid;grid-template-columns:78px minmax(0,1fr) 20px;gap:14px;align-items:center;padding:12px;text-decoration:none;color:inherit;border-radius:14px;background:#1d2022;border:1px solid #37393c;transition:background .15s,border-color .15s}
+.game:hover,.game:focus-visible{background:#292c2f;border-color:#66696d}
+.art{width:78px;height:72px;border-radius:10px;background:#30363b;display:grid;place-items:center;font-size:38px;filter:saturate(.67)}
+.name{font-weight:750;font-size:16px;line-height:1.25;letter-spacing:-.02em}
+.desc{font-size:12px;color:#a5a7a9;margin-top:5px}
+.tags{font-size:11px;color:#83878a;margin-top:7px}
+.arrow{font-size:22px;color:#a8aaac;text-align:right}
+.empty{padding:15px;border:1px dashed #35383a;border-radius:12px;color:#7f8488;font-size:12px;text-align:center}
+footer{margin-top:28px;padding-top:14px;border-top:1px solid #292c2e;color:#717579;font-size:11px}
+@media(max-width:460px){main{padding:14px 13px 34px}.intro{padding:18px 1px 15px}.intro h2{font-size:21px}.game{grid-template-columns:65px minmax(0,1fr) 16px;gap:10px;padding:10px}.art{width:65px;height:69px}.name{font-size:14px}.desc{font-size:11px}.brand img{width:41px;height:41px}.count{font-size:10px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+ <div class="brand"><img src="../hub-dog-icon.png?v=2" alt="HTML Game Center dog icon"><div><h1>HTML GAME CENTER</h1><p class="subtitle">A collection of little browser games.</p></div></div>
+ <span class="count">1 GAME</span>
+</header>
+<div class="intro"><h2>Game library</h2><p>Small experiments. No downloads, no sign-ins. Just pick one and play.</p></div>
+<div class="games">
+ <a class="game" href="../liquid-lab/">
+  <div class="art" aria-hidden="true">💧</div>
+  <div><div class="name">Liquid Lab</div><div class="desc">Pour, grab, and shape interactive liquid. Customize gravity, speed, and viscosity.</div><div class="tags">Physics sandbox · Mobile & desktop</div></div>
+  <span class="arrow" aria-hidden="true">›</span>
+ </a>
+ <div class="empty">More games will show up here.</div>
+</div>
+<footer>HTML GAME CENTER · Made for fun</footer>
+</main>
+</body>
+</html>
