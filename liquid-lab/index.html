@@ -167,6 +167,9 @@ const W=760, H=520, R=4.1, H2=18, S=18, GCOLS=50, LIMIT=950;
 const GRID_ROWS=Math.ceil(H/S)+2;
 const cellHead=new Int32Array(GCOLS*GRID_ROWS);
 const cellNext=new Int32Array(LIMIT);
+const cellVX=new Float32Array(GCOLS*GRID_ROWS);
+const cellVY=new Float32Array(GCOLS*GRID_ROWS);
+const cellCount=new Uint16Array(GCOLS*GRID_ROWS);
 const WALL_SIZE=32,WALL_COLS=Math.ceil(W/WALL_SIZE),WALL_ROWS=Math.ceil(H/WALL_SIZE);
 const wallBuckets=Array.from({length:WALL_COLS*WALL_ROWS},()=>[]);
 let particles=[], walls=[], palette="ocean", tool="pour", rain=false, flipped=false, paused=false;
@@ -357,32 +360,31 @@ function physics(){
   p.vx=clamp((p.x-p.px)*.995,-25,25);
   p.vy=clamp((p.y-p.py)*.995,-25,25);
  }
- // Neighbor-to-neighbor velocity blending provides genuinely syrupy
- // behavior instead of simply slowing down the whole scene.
+ // Thick fluids also share their momentum locally, like syrup.
+ // Cell-level velocity averaging avoids a third expensive particle-pair pass.
  if(viscous>.025){
-  const mix=viscous*.20;
-  cellHead.fill(-1);
-  for(let i=0;i<particles.length;i++){
-   const p=particles[i],col=Math.floor(p.x/S),row=Math.floor(p.y/S);
-   const key=Math.max(0,Math.min(GRID_ROWS-1,row))*GCOLS+Math.max(0,Math.min(GCOLS-1,col));
-   cellNext[i]=cellHead[key];cellHead[key]=i;
+  const mix=viscous*.74;
+  cellVX.fill(0);cellVY.fill(0);cellCount.fill(0);
+  for(const p of particles){
+   const col=Math.max(0,Math.min(GCOLS-1,Math.floor(p.x/S)));
+   const row=Math.max(0,Math.min(GRID_ROWS-1,Math.floor(p.y/S)));
+   const key=row*GCOLS+col;
+   cellVX[key]+=p.vx;cellVY[key]+=p.vy;cellCount[key]++;
   }
-  for(let i=0;i<particles.length;i++){
-   const p=particles[i],cx=Math.floor(p.x/S),cy=Math.floor(p.y/S);
+  for(const p of particles){
+   const cx=Math.floor(p.x/S),cy=Math.floor(p.y/S);
+   let sumX=0,sumY=0,total=0;
    for(let yy=-1;yy<=1;yy++){
     const ry=cy+yy;if(ry<0||ry>=GRID_ROWS)continue;
     for(let xx=-1;xx<=1;xx++){
      const rx=cx+xx;if(rx<0||rx>=GCOLS)continue;
-     for(let j=cellHead[ry*GCOLS+rx];j!==-1;j=cellNext[j]){
-      if(j<=i)continue;
-      const q=particles[j],dx=p.x-q.x,dy=p.y-q.y,d2=dx*dx+dy*dy;
-      if(d2>=near2)continue;
-      const m=mix*(1-Math.sqrt(d2)/H2);
-      const dvx=(q.vx-p.vx)*m,dvy=(q.vy-p.vy)*m;
-      p.vx+=dvx;p.vy+=dvy;q.vx-=dvx;q.vy-=dvy;
-     }
+     const key=ry*GCOLS+rx,n=cellCount[key];
+     if(n===0)continue;
+     const weight=(xx===0&&yy===0)?2:1;
+     sumX+=cellVX[key]*weight;sumY+=cellVY[key]*weight;total+=n*weight;
     }
    }
+   if(total){p.vx+=(sumX/total-p.vx)*mix;p.vy+=(sumY/total-p.vy)*mix}
   }
  }
 }
