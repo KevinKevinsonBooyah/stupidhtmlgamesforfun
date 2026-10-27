@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a1222">
+<link rel="icon" type="image/png" sizes="48x48" href="../favicon.png">
+<link rel="apple-touch-icon" href="../favicon.png">
 <meta name="description" content="Liquid Lab, an interactive, satisfying fluid playground. Pour, stir, sculpt, and change the physics.">
 <title>Liquid Lab | HTML GAME CENTER</title>
 <style>
@@ -61,6 +63,10 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 .presets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
 .preset{background:#20314b;border:1px solid #405572;color:#d0def3;border-radius:10px;padding:10px 6px;font-size:11px;font-weight:750}
 .preset:hover,.preset.active{background:#315878;border-color:#7bcaed}
+.reset-options{display:flex;justify-content:flex-end;margin-top:7px}
+.reset-settings{border:1px solid #47607c;color:#bbd9f4;background:#1b304b;border-radius:9px;padding:10px 14px;font-size:11px;font-weight:800}
+.reset-settings:hover{background:#2c496b}
+.preset-grid-note{margin:9px 0 0;font-size:11px;color:#8da9c9;line-height:1.45}
 .colors{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .color{height:37px;border:2px solid transparent;border-radius:10px;background:#1e304a;display:grid;place-items:center}
 .color i{display:block;width:19px;height:19px;border-radius:50%;background:var(--swatch);box-shadow:0 0 12px var(--swatch)}
@@ -106,8 +112,14 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 <div class="control"><div class="control-label"><label for="flow">Pour amount</label><output id="flow-out">7</output></div><input id="flow" type="range" min="1" max="14" step="1" value="7"></div>
 <div class="control"><div class="control-label"><label for="brush">Brush size</label><output id="brush-out">50px</output></div><input id="brush" type="range" min="16" max="110" step="2" value="50"></div>
 <div class="control"><div class="control-label"><label for="speed">Time speed</label><output id="speed-out">1.0×</output></div><input id="speed" type="range" min=".25" max="2" step=".05" value="1"></div>
-</div></section>
-<section class="panel"><h2>03 / Quick experiments</h2><div class="presets"><button class="preset" data-preset="calm">🌊 Calm pool</button><button class="preset" data-preset="fall">💦 Waterfall</button><button class="preset" data-preset="zero">🪐 Zero gravity</button><button class="preset" data-preset="chaos">⚡ Chaos mode</button></div></section>
+</div><div class="reset-options"><button class="reset-settings" id="reset-settings">↺ Reset settings</button></div></section>
+<section class="panel"><h2>03 / Quick experiments</h2><div class="presets"><button class="preset" data-preset="calm">🌊 Calm pool</button><button class="preset" data-preset="fall">💦 Waterfall</button><button class="preset" data-preset="zero">🪐 Zero gravity</button><button class="preset" data-preset="chaos">⚡ Chaos mode</button>
+<button class="preset" data-preset="honey">🍯 Thick honey</button>
+<button class="preset" data-preset="geyser">⛲ Geyser</button>
+<button class="preset" data-preset="tsunami">🌊 Tsunami</button>
+<button class="preset" data-preset="jelly">🟣 Jelly</button>
+<button class="preset" data-preset="slow">🐌 Slow motion</button>
+</div><p class="preset-grid-note">9 different physics presets. Choose one, then fine-tune the sliders.</p></section>
 <section class="panel palette-panel"><h2>04 / Liquid color</h2><div class="colors"><button class="color active" data-color="ocean" aria-label="Ocean blue" title="Ocean blue" style="--swatch:#6bcaff"><i></i></button><button class="color" data-color="mint" aria-label="Mint green" title="Mint green" style="--swatch:#6ff5c0"><i></i></button><button class="color" data-color="purple" aria-label="Plasma purple" title="Plasma purple" style="--swatch:#b799ff"><i></i></button><button class="color" data-color="lava" aria-label="Lava orange" title="Lava orange" style="--swatch:#ff986b"><i></i></button></div><p class="panel-note">Try drawing walls, then turn gravity upside down. The particles flow around your creations.</p></section>
 </div></div>
 <div class="footer">HTML GAME CENTER · No installation needed · Touch and mouse supported</div>
@@ -135,12 +147,13 @@ const help={
 };
 const swatches={ocean:[91,196,255],mint:[103,244,190],purple:[182,151,255],lava:[255,154,102]};
 let hover=null;
-const fluidMask=document.createElement("canvas");
-const maskCtx=fluidMask.getContext("2d");
 const backgroundCanvas=document.createElement("canvas");
 backgroundCanvas.width=W;backgroundCanvas.height=H;
 const backgroundCtx=backgroundCanvas.getContext("2d");
-let field,fieldImage,kernel=[],maskW=0,maskH=0,maskScale=1;
+const liquidCanvas=document.createElement("canvas");
+liquidCanvas.width=W;liquidCanvas.height=H;
+const liquidCtx=liquidCanvas.getContext("2d");
+let field,kernel=[],maskW=0,maskH=0,maskScale=1;
 let qualityChoice="Auto",qualityResolved="smooth",effectiveLimit=LIMIT;
 let fluidLast=0,liquidDirty=true;
 function rnd(a,b){return a+Math.random()*(b-a)}
@@ -177,12 +190,11 @@ function chooseQuality(){
 function applyQuality(){
  qualityResolved=chooseQuality();
  effectiveLimit=qualityResolved==="fast"?700:LIMIT;
- maskW=qualityResolved==="fast"?252:330;
- maskH=Math.round(maskW*H/W);
- maskScale=maskW/W;
- fluidMask.width=maskW;fluidMask.height=maskH;
+ // Lower-resolution density sampling, full-resolution vector surface drawing.
+ maskW=qualityResolved==="fast"?166:238;
+ maskH=Math.ceil(maskW*H/W)+1;
+ maskScale=(maskW-1)/W;
  field=new Uint16Array(maskW*maskH);
- fieldImage=maskCtx.createImageData(maskW,maskH);
  kernel=[];
  const radius=Math.ceil(20*maskScale),sigma=8.5*maskScale;
  for(let dy=-radius;dy<=radius;dy++)for(let dx=-radius;dx<=radius;dx++){
@@ -397,39 +409,83 @@ function roundRect(x,y,w,h,r){
 // The threshold merges nearby blobs so it does not look like a collection of dots.
 // A precomputed metaball kernel builds a smooth connected surface without
 // costly getImageData reads or hundreds of per-frame canvas gradient draws.
+// Smooth marching-squares contour at full canvas resolution.
+// Only the density grid is coarse; edges remain sharp and anti-aliased.
 function drawLiquid(time){
- const interval=qualityResolved==="fast"?33:25;
+ const interval=qualityResolved==="fast"?36:26;
  if(liquidDirty||(!paused&&time-fluidLast>=interval)){
   field.fill(0);
-  const kw=kernel.length,fw=maskW,fh=maskH;
+  const fw=maskW,fh=maskH,kw=kernel.length;
   for(const p of particles){
-   const x0=Math.round(p.x*maskScale),y0=Math.round(p.y*maskScale);
+   const px=Math.round(p.x*maskScale),py=Math.round(p.y*maskScale);
    for(let k=0;k<kw;k+=3){
-    const x=x0+kernel[k],y=y0+kernel[k+1];
-    if(x<0||x>=fw||y<0||y>=fh)continue;
-    field[y*fw+x]+=kernel[k+2];
+    const gx=px+kernel[k],gy=py+kernel[k+1];
+    if(gx<0||gy<0||gx>=fw||gy>=fh)continue;
+    field[gy*fw+gx]+=kernel[k+2];
    }
   }
-  const out=fieldImage.data,base=swatches[palette];
-  const r=base[0],g=base[1],b=base[2];
-  let idx=0;
-  for(let i=0;i<field.length;i++,idx+=4){
-   const d=field[i];
-   if(d<=68){out[idx+3]=0;continue}
-   let t=(d-68)/68;
-   if(t>1)t=1;
-   t=t*t*(3-2*t);
-   const edge=(1-t)*24;
-   out[idx]=Math.min(255,r+edge);
-   out[idx+1]=Math.min(255,g+edge);
-   out[idx+2]=Math.min(255,b+edge);
-   out[idx+3]=Math.round(t*241);
+  const g=liquidCtx,unit=1/maskScale,T=78;
+  g.clearRect(0,0,W,H);
+  const base=swatches[palette];
+  const blend=g.createLinearGradient(0,0,W*.28,H);
+  blend.addColorStop(0,"rgba("+Math.min(255,base[0]+64)+","+Math.min(255,base[1]+45)+","+Math.min(255,base[2]+22)+",.96)");
+  blend.addColorStop(.48,"rgba("+base[0]+","+base[1]+","+base[2]+",.95)");
+  blend.addColorStop(1,"rgba("+Math.round(base[0]*.72)+","+Math.round(base[1]*.82)+","+Math.round(base[2]*.96)+",.98)");
+  const vals=[0,0,0,0],xs=[0,0,0,0],ys=[0,0,0,0];
+  let begun=false;
+  function emit(x,y){if(!begun){g.moveTo(x,y);begun=true}else g.lineTo(x,y)}
+  // Fill clipped squares in a single draw call, avoiding seams between cells.
+  g.beginPath();
+  for(let row=0;row<fh-1;row++){
+   const top=row*fw,bottom=(row+1)*fw,y=row*unit,y1=(row+1)*unit;
+   for(let col=0;col<fw-1;col++){
+    const a=field[top+col],b=field[top+col+1],c=field[bottom+col+1],d=field[bottom+col];
+    const inside=(a>=T)+(b>=T)*2+(c>=T)*4+(d>=T)*8;
+    if(inside===0)continue;
+    const x=col*unit,x1=(col+1)*unit;
+    if(inside===15){g.rect(x,y,unit+.02,unit+.02);continue}
+    vals[0]=a;vals[1]=b;vals[2]=c;vals[3]=d;
+    xs[0]=x;xs[1]=x1;xs[2]=x1;xs[3]=x;
+    ys[0]=y;ys[1]=y;ys[2]=y1;ys[3]=y1;
+    begun=false;
+    for(let j=0;j<4;j++){
+     const k=(j+1)&3;
+     const isIn=vals[j]>=T,nextIn=vals[k]>=T;
+     if(isIn)emit(xs[j],ys[j]);
+     if(isIn!==nextIn){
+      const t=(T-vals[j])/(vals[k]-vals[j]);
+      emit(xs[j]+(xs[k]-xs[j])*t,ys[j]+(ys[k]-ys[j])*t);
+     }
+    }
+    if(begun)g.closePath();
+   }
   }
-  maskCtx.putImageData(fieldImage,0,0);
-  fluidLast=time;liquidDirty=false;
+  g.fillStyle=blend;g.fill();
+  // Surface highlights follow only the outer boundary, not the density grid.
+  const ex=[0,0,0,0],ey=[0,0,0,0];
+  g.beginPath();
+  for(let row=0;row<fh-1;row++){
+   const top=row*fw,bottom=(row+1)*fw,y=row*unit,y1=(row+1)*unit;
+   for(let col=0;col<fw-1;col++){
+    const a=field[top+col],b=field[top+col+1],c=field[bottom+col+1],d=field[bottom+col];
+    const inA=a>=T,inB=b>=T,inC=c>=T,inD=d>=T;
+    if(inA===inB&&inB===inC&&inC===inD)continue;
+    const x=col*unit,x1=(col+1)*unit;
+    let n=0,t;
+    if(inA!==inB){t=(T-a)/(b-a);ex[n]=x+(x1-x)*t;ey[n]=y;n++}
+    if(inB!==inC){t=(T-b)/(c-b);ex[n]=x1;ey[n]=y+(y1-y)*t;n++}
+    if(inC!==inD){t=(T-c)/(d-c);ex[n]=x1+(x-x1)*t;ey[n]=y1;n++}
+    if(inD!==inA){t=(T-d)/(a-d);ex[n]=x;ey[n]=y1+(y-y1)*t;n++}
+    if(n>=2){g.moveTo(ex[0],ey[0]);g.lineTo(ex[1],ey[1])}
+    if(n===4){g.moveTo(ex[2],ey[2]);g.lineTo(ex[3],ey[3])}
+   }
+  }
+  g.strokeStyle="rgba(224,250,255,.43)";
+  g.lineWidth=1.6;g.stroke();
+  fluidLast=time;
+  liquidDirty=false;
  }
- ctx.imageSmoothingEnabled=true;
- ctx.drawImage(fluidMask,0,0,W,H);
+ ctx.drawImage(liquidCanvas,0,0,W,H);
 }
 function draw(time){
  const cx=canvas.width,cy=canvas.height;
@@ -508,11 +564,17 @@ function setTool(next){
  $("#tip").textContent=messages[next];
 }
 document.querySelectorAll("[data-tool]").forEach(b=>b.addEventListener("click",()=>setTool(b.dataset.tool)));
+const defaultSettings=Object.freeze({velocity:9,angle:45,gravity:.32,viscosity:24,pressure:65,bounce:20,flow:7,brush:50,speed:1});
 const presets={
  calm:{velocity:4,angle:45,gravity:.14,viscosity:65,pressure:38,bounce:9,flow:5,speed:1},
  fall:{velocity:16,angle:270,gravity:.66,viscosity:12,pressure:75,bounce:18,flow:10,speed:1},
  zero:{velocity:9,angle:90,gravity:0,viscosity:18,pressure:75,bounce:85,flow:8,speed:1},
- chaos:{velocity:22,angle:225,gravity:1.05,viscosity:0,pressure:92,bounce:78,flow:14,speed:1.35}
+ chaos:{velocity:22,angle:225,gravity:1.05,viscosity:0,pressure:92,bounce:78,flow:14,speed:1.35},
+ honey:{velocity:3,angle:55,gravity:.23,viscosity:96,pressure:28,bounce:5,flow:5,brush:60,speed:1},
+ geyser:{velocity:23,angle:90,gravity:.56,viscosity:8,pressure:82,bounce:16,flow:11,brush:48,speed:1},
+ tsunami:{velocity:18,angle:0,gravity:.52,viscosity:17,pressure:98,bounce:24,flow:13,brush:72,speed:1},
+ jelly:{velocity:5,angle:110,gravity:.18,viscosity:88,pressure:94,bounce:55,flow:6,brush:55,speed:1},
+ slow:{velocity:9,angle:45,gravity:.26,viscosity:39,pressure:67,bounce:19,flow:7,brush:50,speed:.35}
 };
 document.querySelectorAll("[data-preset]").forEach(b=>b.addEventListener("click",()=>{
  Object.assign(settings,presets[b.dataset.preset]);refresh();
@@ -555,6 +617,21 @@ $("#quality").addEventListener("click",()=>{
  applyQuality();
  $("#quality").textContent="⚡ Quality: "+qualityChoice;
  $("#quality").classList.toggle("active",qualityChoice==="Fast");
+});
+$("#reset-settings").addEventListener("click",()=>{
+ Object.assign(settings,defaultSettings);
+ qualityChoice="Auto";applyQuality();
+ $("#quality").textContent="⚡ Quality: Auto";
+ $("#quality").classList.remove("active");
+ rain=false;flipped=false;paused=false;
+ $("#rain").textContent="🌧️ Rain: OFF";$("#rain").classList.remove("active");
+ $("#reverse").textContent="↟ Flip gravity";$("#reverse").classList.remove("active");
+ $("#pause").textContent="⏸ Pause";$("#pause").classList.remove("active");
+ $("#state").textContent="● SIMULATION LIVE";
+ palette="ocean";
+ document.querySelectorAll(".color").forEach(e=>e.classList.toggle("active",e.dataset.color===palette));
+ document.querySelectorAll(".preset").forEach(e=>e.classList.remove("active"));
+ setTool("pour");refresh();liquidDirty=true;
 });
 $("#clear").addEventListener("click",()=>{particles=[];walls=[];rebuildWallBuckets();liquidDirty=true;$("#count").textContent="0"});
 refresh();
