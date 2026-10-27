@@ -153,6 +153,10 @@ const backgroundCtx=backgroundCanvas.getContext("2d");
 const liquidCanvas=document.createElement("canvas");
 liquidCanvas.width=W;liquidCanvas.height=H;
 const liquidCtx=liquidCanvas.getContext("2d");
+const wallCanvas=document.createElement("canvas");
+wallCanvas.width=W;wallCanvas.height=H;
+const wallCtx=wallCanvas.getContext("2d");
+let wallsDirty=true,edgeCells,edgeCount=0;
 let field,kernel=[],maskW=0,maskH=0,maskScale=1;
 let qualityChoice="Auto",qualityResolved="smooth",effectiveLimit=LIMIT;
 let fluidLast=0,liquidDirty=true;
@@ -195,6 +199,7 @@ function applyQuality(){
  maskH=Math.ceil(maskW*H/W)+1;
  maskScale=(maskW-1)/W;
  field=new Uint16Array(maskW*maskH);
+ edgeCells=new Uint32Array(maskW*maskH);
  kernel=[];
  const radius=Math.ceil(20*maskScale),sigma=8.5*maskScale;
  for(let dy=-radius;dy<=radius;dy++)for(let dx=-radius;dx<=radius;dx++){
@@ -241,8 +246,10 @@ function indexWall(o){
 function rebuildWallBuckets(){
  for(const b of wallBuckets)b.length=0;
  for(const o of walls)indexWall(o);
+ wallsDirty=true;
 }
 function addWall(o){
+ wallsDirty=true;
  walls.push(o);
  if(walls.length>130){walls.shift();rebuildWallBuckets()}
  else indexWall(o);
@@ -412,7 +419,8 @@ function roundRect(x,y,w,h,r){
 // Smooth marching-squares contour at full canvas resolution.
 // Only the density grid is coarse; edges remain sharp and anti-aliased.
 function drawLiquid(time){
- const interval=qualityResolved==="fast"?36:26;
+ // With grouped fills, the surface can refresh every display frame.
+ const interval=15;
  if(liquidDirty||(!paused&&time-fluidLast>=interval)){
   field.fill(0);
   const fw=maskW,fh=maskH,kw=kernel.length;
@@ -434,16 +442,26 @@ function drawLiquid(time){
   const vals=[0,0,0,0],xs=[0,0,0,0],ys=[0,0,0,0];
   let begun=false;
   function emit(x,y){if(!begun){g.moveTo(x,y);begun=true}else g.lineTo(x,y)}
-  // Fill clipped squares in a single draw call, avoiding seams between cells.
+  // Merge adjacent fully-filled cells into long horizontal spans.
+  edgeCount=0;
   g.beginPath();
   for(let row=0;row<fh-1;row++){
    const top=row*fw,bottom=(row+1)*fw,y=row*unit,y1=(row+1)*unit;
+   let runStart=-1;
    for(let col=0;col<fw-1;col++){
     const a=field[top+col],b=field[top+col+1],c=field[bottom+col+1],d=field[bottom+col];
     const inside=(a>=T)+(b>=T)*2+(c>=T)*4+(d>=T)*8;
+    if(inside===15){
+     if(runStart===-1)runStart=col;
+     continue;
+    }
+    if(runStart>=0){
+     g.rect(runStart*unit,y,(col-runStart)*unit+.035,unit+.035);
+     runStart=-1;
+    }
     if(inside===0)continue;
+    edgeCells[edgeCount++]=top+col;
     const x=col*unit,x1=(col+1)*unit;
-    if(inside===15){g.rect(x,y,unit+.02,unit+.02);continue}
     vals[0]=a;vals[1]=b;vals[2]=c;vals[3]=d;
     xs[0]=x;xs[1]=x1;xs[2]=x1;xs[3]=x;
     ys[0]=y;ys[1]=y;ys[2]=y1;ys[3]=y1;
@@ -459,26 +477,26 @@ function drawLiquid(time){
     }
     if(begun)g.closePath();
    }
+   if(runStart>=0)g.rect(runStart*unit,y,(fw-1-runStart)*unit+.035,unit+.035);
   }
   g.fillStyle=blend;g.fill();
   // Surface highlights follow only the outer boundary, not the density grid.
   const ex=[0,0,0,0],ey=[0,0,0,0];
   g.beginPath();
-  for(let row=0;row<fh-1;row++){
-   const top=row*fw,bottom=(row+1)*fw,y=row*unit,y1=(row+1)*unit;
-   for(let col=0;col<fw-1;col++){
-    const a=field[top+col],b=field[top+col+1],c=field[bottom+col+1],d=field[bottom+col];
-    const inA=a>=T,inB=b>=T,inC=c>=T,inD=d>=T;
-    if(inA===inB&&inB===inC&&inC===inD)continue;
-    const x=col*unit,x1=(col+1)*unit;
-    let n=0,t;
-    if(inA!==inB){t=(T-a)/(b-a);ex[n]=x+(x1-x)*t;ey[n]=y;n++}
-    if(inB!==inC){t=(T-b)/(c-b);ex[n]=x1;ey[n]=y+(y1-y)*t;n++}
-    if(inC!==inD){t=(T-c)/(d-c);ex[n]=x1+(x-x1)*t;ey[n]=y1;n++}
-    if(inD!==inA){t=(T-d)/(a-d);ex[n]=x;ey[n]=y1+(y-y1)*t;n++}
-    if(n>=2){g.moveTo(ex[0],ey[0]);g.lineTo(ex[1],ey[1])}
-    if(n===4){g.moveTo(ex[2],ey[2]);g.lineTo(ex[3],ey[3])}
-   }
+  for(let i=0;i<edgeCount;i++){
+   const top=edgeCells[i];
+   const col=top%fw,row=(top-col)/fw;
+   const bottom=top+fw;
+   const a=field[top],b=field[top+1],c=field[bottom+1],d=field[bottom];
+   const inA=a>=T,inB=b>=T,inC=c>=T,inD=d>=T;
+   const x=col*unit,y=row*unit,x1=x+unit,y1=y+unit;
+   let n=0,t;
+   if(inA!==inB){t=(T-a)/(b-a);ex[n]=x+unit*t;ey[n]=y;n++}
+   if(inB!==inC){t=(T-b)/(c-b);ex[n]=x1;ey[n]=y+unit*t;n++}
+   if(inC!==inD){t=(T-c)/(d-c);ex[n]=x1-unit*t;ey[n]=y1;n++}
+   if(inD!==inA){t=(T-d)/(a-d);ex[n]=x;ey[n]=y1-unit*t;n++}
+   if(n>=2){g.moveTo(ex[0],ey[0]);g.lineTo(ex[1],ey[1])}
+   if(n===4){g.moveTo(ex[2],ey[2]);g.lineTo(ex[3],ey[3])}
   }
   g.strokeStyle="rgba(224,250,255,.43)";
   g.lineWidth=1.6;g.stroke();
@@ -487,17 +505,24 @@ function drawLiquid(time){
  }
  ctx.drawImage(liquidCanvas,0,0,W,H);
 }
+function drawWalls(){
+ if(!wallsDirty)return;
+ const g=wallCtx;
+ g.clearRect(0,0,W,H);
+ for(const o of walls){
+  g.lineCap="round";g.strokeStyle="#a4c7ef26";g.lineWidth=28;g.beginPath();g.moveTo(o.ax,o.ay);g.lineTo(o.bx,o.by);g.stroke();
+  g.strokeStyle="#91a9c5";g.lineWidth=14;g.beginPath();g.moveTo(o.ax,o.ay);g.lineTo(o.bx,o.by);g.stroke();
+  g.strokeStyle="#e6f5ff";g.lineWidth=2;g.beginPath();g.moveTo(o.ax-1,o.ay-2);g.lineTo(o.bx-1,o.by-2);g.stroke();
+ }
+ wallsDirty=false;
+}
 function draw(time){
  const cx=canvas.width,cy=canvas.height;
  ctx.setTransform(cx/W,0,0,cy/H,0,0);
  ctx.drawImage(backgroundCanvas,0,0);
  drawLiquid(time);
- for(const o of walls){
-  ctx.lineCap="round";ctx.strokeStyle="#a4c7ef26";ctx.lineWidth=28;ctx.beginPath();ctx.moveTo(o.ax,o.ay);ctx.lineTo(o.bx,o.by);ctx.stroke();
-  ctx.strokeStyle="#91a9c5";ctx.lineWidth=14;ctx.beginPath();ctx.moveTo(o.ax,o.ay);ctx.lineTo(o.bx,o.by);ctx.stroke();
-  ctx.strokeStyle="#e6f5ff";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(o.ax-1,o.ay-2);ctx.lineTo(o.bx-1,o.by-2);ctx.stroke();
- }
-
+ drawWalls();
+ ctx.drawImage(wallCanvas,0,0);
  if(pointer&&pointer.down||hover&&tool!=="pour"){
   const pos=pointer&&pointer.down?pointer:hover;
   if(pos){
