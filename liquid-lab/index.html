@@ -84,6 +84,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 <button class="action" id="reverse">↟ Flip gravity</button>
 <button class="action" id="shake">💥 Splash!</button>
 <button class="action" id="pause">⏸ Pause</button>
+<button class="action" id="quality">⚡ Quality: Auto</button>
 <button class="action warn" id="clear">✕ Clear</button>
 </div>
 </div>
@@ -94,7 +95,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 <button class="tool" data-tool="stir">🌀 Push</button>
 <button class="tool" data-tool="wall">🪨 Wall</button>
 <button class="tool" data-tool="erase">🧽 Erase</button>
-</div><p class="panel-note" id="toolhelp">Drag over the tank to release a stream of liquid. Change velocity and direction below.</p></section>
+</div><p class="panel-note" id="toolhelp">Drag over the tank to release liquid. Use Grab to lift, stretch, and drop it. On slower phones, choose Fast quality.</p></section>
 <section class="panel settings"><h2>02 / Fluid physics</h2><div class="slider-grid">
 <div class="control"><div class="control-label"><label for="velocity">Launch velocity</label><output id="velocity-out">9.0</output></div><input id="velocity" type="range" min="0" max="25" step=".5" value="9"></div>
 <div class="control"><div class="control-label"><label for="angle">Launch direction</label><output id="angle-out">45°</output></div><input id="angle" type="range" min="0" max="360" step="5" value="45"></div>
@@ -117,6 +118,11 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 const $ = s => document.querySelector(s);
 const canvas = $("#fluid"), ctx = canvas.getContext("2d", {alpha:false});
 const W=760, H=520, R=4.1, H2=18, S=18, GCOLS=50, LIMIT=950;
+const GRID_ROWS=Math.ceil(H/S)+2;
+const cellHead=new Int32Array(GCOLS*GRID_ROWS);
+const cellNext=new Int32Array(LIMIT);
+const WALL_SIZE=32,WALL_COLS=Math.ceil(W/WALL_SIZE),WALL_ROWS=Math.ceil(H/WALL_SIZE);
+const wallBuckets=Array.from({length:WALL_COLS*WALL_ROWS},()=>[]);
 let particles=[], walls=[], palette="ocean", tool="pour", rain=false, flipped=false, paused=false;
 let fps=60, ticks=0, fpsTime=0, last=0, remaining=0, pointer=null, preset="";
 const settings={velocity:9,angle:45,gravity:.32,viscosity:24,pressure:65,bounce:20,flow:7,brush:50,speed:1};
@@ -128,37 +134,69 @@ const help={
  erase:"Drag over particles or barriers to remove them from the tank."
 };
 const swatches={ocean:[91,196,255],mint:[103,244,190],purple:[182,151,255],lava:[255,154,102]};
-let sprite=null, hover=null;
+let hover=null;
 const fluidMask=document.createElement("canvas");
-fluidMask.width=380;fluidMask.height=260;
-const maskCtx=fluidMask.getContext("2d",{willReadFrequently:true});
-const MASK_SCALE=fluidMask.width/W;
-let liquidDirty=true,liquidFrames=0;
+const maskCtx=fluidMask.getContext("2d");
+const backgroundCanvas=document.createElement("canvas");
+backgroundCanvas.width=W;backgroundCanvas.height=H;
+const backgroundCtx=backgroundCanvas.getContext("2d");
+let field,fieldImage,kernel=[],maskW=0,maskH=0,maskScale=1;
+let qualityChoice="Auto",qualityResolved="smooth",effectiveLimit=LIMIT;
+let fluidLast=0,liquidDirty=true;
 function rnd(a,b){return a+Math.random()*(b-a)}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
-function makeSprite(){
- const c=document.createElement("canvas");c.width=64;c.height=64;
- const b=c.getContext("2d"),grad=b.createRadialGradient(32,32,0,32,32,32);
- grad.addColorStop(0,"rgba(255,255,255,1)");
- grad.addColorStop(.24,"rgba(255,255,255,.97)");
- grad.addColorStop(.55,"rgba(255,255,255,.57)");
- grad.addColorStop(.82,"rgba(255,255,255,.13)");
- grad.addColorStop(1,"rgba(255,255,255,0)");
- b.fillStyle=grad;b.fillRect(0,0,64,64);
- sprite=c;liquidDirty=true;
+function renderBackground(){
+ const g=backgroundCtx;
+ const grad=g.createLinearGradient(0,0,W,H);
+ grad.addColorStop(0,"#13243b");grad.addColorStop(.5,"#0d1c30");grad.addColorStop(1,"#0c1628");
+ g.fillStyle=grad;g.fillRect(0,0,W,H);
+ g.lineWidth=1;g.strokeStyle="#c3deff0a";g.beginPath();
+ for(let x=20;x<W;x+=40){g.moveTo(x,0);g.lineTo(x,H)}
+ for(let y=20;y<H;y+=40){g.moveTo(0,y);g.lineTo(W,y)}
+ g.stroke();
+ const light=g.createRadialGradient(W*.48,H*.8,40,W*.48,H*.8,W*.69);
+ light.addColorStop(0,"#3986c20d");light.addColorStop(1,"#3986c200");
+ g.fillStyle=light;g.fillRect(0,0,W,H);
+ g.strokeStyle="#7fcaff1e";g.lineWidth=3;g.strokeRect(2,2,W-4,H-4);
 }
-makeSprite();
+renderBackground();
 function resize(){
  const rect=canvas.getBoundingClientRect();
- const dpr=Math.min(window.devicePixelRatio||1,2);
+ const dpr=Math.min(window.devicePixelRatio||1,qualityResolved==="fast"?1.15:1.7);
  canvas.width=Math.max(1,Math.round(rect.width*dpr));
  canvas.height=Math.max(1,Math.round(rect.height*dpr));
 }
-window.addEventListener("resize",resize);
+window.addEventListener("resize",()=>{
+ resize();
+ if(qualityChoice==="Auto"&&chooseQuality()!==qualityResolved)applyQuality();
+});
 if(window.ResizeObserver)new ResizeObserver(resize).observe(canvas);
-resize();
+function chooseQuality(){
+ return qualityChoice==="Auto"?(window.matchMedia&&window.matchMedia("(pointer: coarse)").matches||window.innerWidth<690?"fast":"smooth"):qualityChoice.toLowerCase();
+}
+function applyQuality(){
+ qualityResolved=chooseQuality();
+ effectiveLimit=qualityResolved==="fast"?700:LIMIT;
+ maskW=qualityResolved==="fast"?252:330;
+ maskH=Math.round(maskW*H/W);
+ maskScale=maskW/W;
+ fluidMask.width=maskW;fluidMask.height=maskH;
+ field=new Uint16Array(maskW*maskH);
+ fieldImage=maskCtx.createImageData(maskW,maskH);
+ kernel=[];
+ const radius=Math.ceil(20*maskScale),sigma=8.5*maskScale;
+ for(let dy=-radius;dy<=radius;dy++)for(let dx=-radius;dx<=radius;dx++){
+  const d2=dx*dx+dy*dy;
+  if(d2>radius*radius)continue;
+  const v=Math.round(144*Math.exp(-d2/(2*sigma*sigma)));
+  if(v>0)kernel.push(dx,dy,v);
+ }
+ liquidDirty=true;fluidLast=0;
+ resize();
+}
+applyQuality();
 function add(x,y,n,dx=0,dy=0){
- const max=Math.min(n,LIMIT-particles.length);
+ const max=Math.min(n,effectiveLimit-particles.length);
  for(let i=0;i<max;i++){
   const t=rnd(0,Math.PI*2),spread=Math.sqrt(Math.random())*9;
   let px=clamp(x+Math.cos(t)*spread,R+1,W-R-1),py=clamp(y+Math.sin(t)*spread,R+1,H-R-1);
@@ -168,7 +206,7 @@ function add(x,y,n,dx=0,dy=0){
 }
 function pool(amount=260){
  for(let i=0;i<amount;i++){
-  if(particles.length>=LIMIT)break;
+  if(particles.length>=effectiveLimit)break;
   const col=i%31,row=Math.floor(i/31);
   let x=170+col*11+rnd(-2,2),y=H-16-row*10+rnd(-2,2);
   if(y>R+3)add(x,y,1,0,0);
@@ -180,12 +218,29 @@ function distanceSegment(x,y,o){
  const t=clamp(((x-o.ax)*dx+(y-o.ay)*dy)/den,0,1);
  return Math.hypot(x-(o.ax+dx*t),y-(o.ay+dy*t));
 }
+function indexWall(o){
+ const minx=Math.max(0,Math.floor((Math.min(o.ax,o.bx)-14)/WALL_SIZE));
+ const maxx=Math.min(WALL_COLS-1,Math.floor((Math.max(o.ax,o.bx)+14)/WALL_SIZE));
+ const miny=Math.max(0,Math.floor((Math.min(o.ay,o.by)-14)/WALL_SIZE));
+ const maxy=Math.min(WALL_ROWS-1,Math.floor((Math.max(o.ay,o.by)+14)/WALL_SIZE));
+ for(let y=miny;y<=maxy;y++)for(let x=minx;x<=maxx;x++)
+  wallBuckets[y*WALL_COLS+x].push(o);
+}
+function rebuildWallBuckets(){
+ for(const b of wallBuckets)b.length=0;
+ for(const o of walls)indexWall(o);
+}
+function addWall(o){
+ walls.push(o);
+ if(walls.length>130){walls.shift();rebuildWallBuckets()}
+ else indexWall(o);
+}
 function collide(p){
  if(p.x<R){p.x=R;p.px=p.x+p.vx*(settings.bounce/100)}
  if(p.x>W-R){p.x=W-R;p.px=p.x+p.vx*(settings.bounce/100)}
  if(p.y<R){p.y=R;p.py=p.y+p.vy*(settings.bounce/100)}
  if(p.y>H-R){p.y=H-R;p.py=p.y+p.vy*(settings.bounce/100)}
- for(const o of walls){
+ for(const o of wallBuckets[Math.min(WALL_ROWS-1,Math.max(0,Math.floor(p.y/WALL_SIZE)))*WALL_COLS+Math.min(WALL_COLS-1,Math.max(0,Math.floor(p.x/WALL_SIZE)))]){
   const x0=Math.min(o.ax,o.bx)-13,x1=Math.max(o.ax,o.bx)+13,y0=Math.min(o.ay,o.by)-13,y1=Math.max(o.ay,o.by)+13;
   if(p.x<x0||p.x>x1||p.y<y0||p.y>y1)continue;
   const dx=o.bx-o.ax,dy=o.by-o.ay,den=dx*dx+dy*dy||1;
@@ -211,29 +266,31 @@ function physics(){
   p.x+=p.vx;p.y+=p.vy;
   collide(p);
  }
- // Local, symmetric neighbor constraints make the dots behave like a cohesive fluid.
+ // Reusable typed-array spatial hash: no Maps or per-frame neighbor arrays.
+ const minimum=8.3,near2=H2*H2,force=.32+.0027*settings.pressure;
  for(let iter=0;iter<2;iter++){
-  const grid=new Map();
+  cellHead.fill(-1);
   for(let i=0;i<particles.length;i++){
-   const p=particles[i],key=Math.floor(p.x/S)+Math.floor(p.y/S)*GCOLS;
-   let b=grid.get(key);if(!b){b=[];grid.set(key,b)}b.push(i);
+   const p=particles[i];
+   const col=Math.floor(p.x/S),row=Math.floor(p.y/S);
+   const key=Math.max(0,Math.min(GRID_ROWS-1,row))*GCOLS+Math.max(0,Math.min(GCOLS-1,col));
+   cellNext[i]=cellHead[key];cellHead[key]=i;
   }
-  const minimum=8.3,near=H2,force=.32+.0027*settings.pressure;
   for(let i=0;i<particles.length;i++){
    const p=particles[i],gx=Math.floor(p.x/S),gy=Math.floor(p.y/S);
-   for(let yy=-1;yy<=1;yy++)for(let xx=-1;xx<=1;xx++){
-    const ids=grid.get((gy+yy)*GCOLS+gx+xx);
-    if(!ids)continue;
-    for(const j of ids){
-     if(j<=i)continue;
-     const q=particles[j],dx=q.x-p.x,dy=q.y-p.y,d2=dx*dx+dy*dy;
-     if(d2>=near*near)continue;
-     const d=Math.sqrt(d2)||.0001;
-     let shift;
-     if(d<minimum)shift=(minimum-d)*force;
-     else shift=-(near-d)*(.012+settings.viscosity*.000065);
-     const sx=dx/d*shift,sy=dy/d*shift;
-     p.x-=sx;p.y-=sy;q.x+=sx;q.y+=sy;
+   for(let yy=-1;yy<=1;yy++){
+    const ry=gy+yy;if(ry<0||ry>=GRID_ROWS)continue;
+    for(let xx=-1;xx<=1;xx++){
+     const rx=gx+xx;if(rx<0||rx>=GCOLS)continue;
+     for(let j=cellHead[ry*GCOLS+rx];j!==-1;j=cellNext[j]){
+      if(j<=i)continue;
+      const q=particles[j],dx=q.x-p.x,dy=q.y-p.y,d2=dx*dx+dy*dy;
+      if(d2>=near2)continue;
+      const dist=Math.sqrt(d2)||.0001;
+      const shift=dist<minimum?(minimum-dist)*force:-(H2-dist)*(.012+settings.viscosity*.000065);
+      const sx=dx/dist*shift,sy=dy/dist*shift;
+      p.x-=sx;p.y-=sy;q.x+=sx;q.y+=sy;
+     }
     }
    }
   }
@@ -280,12 +337,12 @@ function brush(){
   }
  }else if(tool==="erase"){
   particles=particles.filter(p=>Math.hypot(p.x-mx,p.y-my)>r*.70);
-  walls=walls.filter(o=>distanceSegment(mx,my,o)>r*.63);
+  const remainingWalls=walls.filter(o=>distanceSegment(mx,my,o)>r*.63);
+  if(remainingWalls.length!==walls.length){walls=remainingWalls;rebuildWallBuckets()}
  }else if(tool==="wall"){
-  if(!pointer.hasWall){walls.push({ax:mx,ay:my,bx:mx+.1,by:my+.1});pointer.hasWall=true}
+  if(!pointer.hasWall){addWall({ax:mx,ay:my,bx:mx+.1,by:my+.1});pointer.hasWall=true}
   if(Math.hypot(mx-pointer.lastWX,my-pointer.lastWY)>6){
-   walls.push({ax:pointer.lastWX,ay:pointer.lastWY,bx:mx,by:my});
-   if(walls.length>130)walls.splice(0,walls.length-130);
+   addWall({ax:pointer.lastWX,ay:pointer.lastWY,bx:mx,by:my});
    pointer.lastWX=mx;pointer.lastWY=my;
   }
  }
@@ -338,50 +395,47 @@ function roundRect(x,y,w,h,r){
 }
 // Convert overlapping particles into a connected, softly shaded liquid surface.
 // The threshold merges nearby blobs so it does not look like a collection of dots.
-function drawLiquid(){
- if(liquidDirty||!paused&&liquidFrames++%2===0){
-  const fw=fluidMask.width,fh=fluidMask.height,scale=MASK_SCALE;
-  maskCtx.clearRect(0,0,fw,fh);
-  maskCtx.globalCompositeOperation="lighter";
-  for(const p of particles)
-   maskCtx.drawImage(sprite,(p.x-17)*scale,(p.y-17)*scale,34*scale,34*scale);
-  maskCtx.globalCompositeOperation="source-over";
-  const img=maskCtx.getImageData(0,0,fw,fh),data=img.data,base=swatches[palette];
-  for(let i=0;i<data.length;i+=4){
-   const a=data[i+3];
-   if(a<=51){data[i+3]=0;continue}
-   let t=clamp((a-51)/63,0,1);
-   t=t*t*(3-2*t);
-   const y=Math.floor(i/4/fw)/fh;
-   const shimmer=Math.max(0,1-t)*29;
-   const light=(1-y*.15);
-   data[i]=Math.min(255,base[0]*light+shimmer+8);
-   data[i+1]=Math.min(255,base[1]*light+shimmer+5);
-   data[i+2]=Math.min(255,base[2]*light+shimmer);
-   data[i+3]=Math.round(t*240);
+// A precomputed metaball kernel builds a smooth connected surface without
+// costly getImageData reads or hundreds of per-frame canvas gradient draws.
+function drawLiquid(time){
+ const interval=qualityResolved==="fast"?33:25;
+ if(liquidDirty||(!paused&&time-fluidLast>=interval)){
+  field.fill(0);
+  const kw=kernel.length,fw=maskW,fh=maskH;
+  for(const p of particles){
+   const x0=Math.round(p.x*maskScale),y0=Math.round(p.y*maskScale);
+   for(let k=0;k<kw;k+=3){
+    const x=x0+kernel[k],y=y0+kernel[k+1];
+    if(x<0||x>=fw||y<0||y>=fh)continue;
+    field[y*fw+x]+=kernel[k+2];
+   }
   }
-  maskCtx.putImageData(img,0,0);
-  liquidDirty=false;
+  const out=fieldImage.data,base=swatches[palette];
+  const r=base[0],g=base[1],b=base[2];
+  let idx=0;
+  for(let i=0;i<field.length;i++,idx+=4){
+   const d=field[i];
+   if(d<=68){out[idx+3]=0;continue}
+   let t=(d-68)/68;
+   if(t>1)t=1;
+   t=t*t*(3-2*t);
+   const edge=(1-t)*24;
+   out[idx]=Math.min(255,r+edge);
+   out[idx+1]=Math.min(255,g+edge);
+   out[idx+2]=Math.min(255,b+edge);
+   out[idx+3]=Math.round(t*241);
+  }
+  maskCtx.putImageData(fieldImage,0,0);
+  fluidLast=time;liquidDirty=false;
  }
  ctx.imageSmoothingEnabled=true;
  ctx.drawImage(fluidMask,0,0,W,H);
 }
-function draw(){
+function draw(time){
  const cx=canvas.width,cy=canvas.height;
  ctx.setTransform(cx/W,0,0,cy/H,0,0);
- const bg=ctx.createLinearGradient(0,0,W,H);
- bg.addColorStop(0,"#13243b");bg.addColorStop(.5,"#0d1c30");bg.addColorStop(1,"#0c1628");
- ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
- ctx.lineWidth=1;ctx.strokeStyle="#c3deff0a";ctx.beginPath();
- for(let x=20;x<W;x+=40){ctx.moveTo(x,0);ctx.lineTo(x,H)}
- for(let y=20;y<H;y+=40){ctx.moveTo(0,y);ctx.lineTo(W,y)}
- ctx.stroke();
- // Tank lighting and transparent glass edges.
- const light=ctx.createRadialGradient(W*.48,H*.8,40,W*.48,H*.8,W*.69);
- light.addColorStop(0,"#3986c20d");light.addColorStop(1,"#3986c200");
- ctx.fillStyle=light;ctx.fillRect(0,0,W,H);
- ctx.strokeStyle="#7fcaff1e";ctx.lineWidth=3;ctx.strokeRect(2,2,W-4,H-4);
- drawLiquid();
+ ctx.drawImage(backgroundCanvas,0,0);
+ drawLiquid(time);
  for(const o of walls){
   ctx.lineCap="round";ctx.strokeStyle="#a4c7ef26";ctx.lineWidth=28;ctx.beginPath();ctx.moveTo(o.ax,o.ay);ctx.lineTo(o.bx,o.by);ctx.stroke();
   ctx.strokeStyle="#91a9c5";ctx.lineWidth=14;ctx.beginPath();ctx.moveTo(o.ax,o.ay);ctx.lineTo(o.bx,o.by);ctx.stroke();
@@ -415,9 +469,9 @@ function frame(time){
  if(!paused){
   remaining=Math.min(remaining+dt*settings.speed,.06);
   let count=0;
-  while(remaining>=1/60&&count<3){simulate();remaining-=1/60;count++}
+  while(remaining>=1/60&&count<2){simulate();remaining-=1/60;count++}
  }else remaining=0;
- draw();
+ draw(time);
  updateStats(time);
  requestAnimationFrame(frame);
 }
@@ -469,8 +523,8 @@ document.querySelectorAll("[data-color]").forEach(b=>b.addEventListener("click",
  document.querySelectorAll(".color").forEach(e=>e.classList.toggle("active",e===b));
 }));
 $("#fill").addEventListener("click",()=>{
- if(particles.length>=LIMIT)return;
- const n=Math.min(260,LIMIT-particles.length),cols=26;
+ if(particles.length>=effectiveLimit)return;
+ const n=Math.min(260,effectiveLimit-particles.length),cols=26;
  for(let i=0;i<n;i++){
   const x=clamp(220+(i%cols)*10+rnd(-1,1),R+5,W-R-5);
   const y=clamp(110+Math.floor(i/cols)*10+rnd(-1,1),R+5,H-R-5);
@@ -495,7 +549,14 @@ $("#pause").addEventListener("click",()=>{
  liquidDirty=true;
  $("#state").textContent=paused?"Ⅱ SIMULATION PAUSED":"● SIMULATION LIVE";
 });
-$("#clear").addEventListener("click",()=>{particles=[];walls=[];liquidDirty=true;$("#count").textContent="0"});
+$("#quality").addEventListener("click",()=>{
+ const modes=["Auto","Fast","Smooth"];
+ qualityChoice=modes[(modes.indexOf(qualityChoice)+1)%modes.length];
+ applyQuality();
+ $("#quality").textContent="⚡ Quality: "+qualityChoice;
+ $("#quality").classList.toggle("active",qualityChoice==="Fast");
+});
+$("#clear").addEventListener("click",()=>{particles=[];walls=[];rebuildWallBuckets();liquidDirty=true;$("#count").textContent="0"});
 refresh();
 })();
 </script>
