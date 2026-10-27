@@ -44,7 +44,7 @@ h1 span{background:linear-gradient(100deg,#83d8ff,#76baff 49%,#b7a2ff);backgroun
 .panel{background:linear-gradient(155deg,#17253b,#121e32);border:1px solid #30425b;border-radius:19px;padding:15px;box-shadow:0 14px 35px #030a1629}
 .side{display:flex;flex-direction:column;gap:13px;min-width:0}
 .panel h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#e1edfc;margin:0 0 13px;font-weight:800}
-.tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
 .tool{border:1px solid #40526c;border-radius:11px;background:#182842;padding:11px 7px;color:#bdcde2;font-size:12px;font-weight:750;min-height:42px}
 .tool:hover{background:#263c5b}
 .tool.active{background:linear-gradient(130deg,#285c82,#235072);color:#e1f5ff;border-color:#64c9fb;box-shadow:inset 0 0 0 1px #80d5ff14}
@@ -67,17 +67,17 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 .color.active{border-color:#b5e7ff;background:#2a415d}
 .footer{color:#708aa9;font-size:11px;margin-top:20px;text-align:center}
 @media(max-width:970px){.workspace{grid-template-columns:minmax(0,1fr)}.side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.settings{grid-column:1/-1}.slider-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:22px}.palette-panel{grid-column:auto}}
-@media(max-width:600px){.page{padding:12px 12px 24px}.hero{margin-bottom:13px}.stage{border-radius:16px}.stage-top{top:8px;left:8px;right:8px}.stage-tag{font-size:10px;padding:6px 7px}.stage canvas{aspect-ratio:760/570}.stage-tip{font-size:10px;padding:6px 9px;bottom:9px}.actionbar{gap:6px}.action{padding:10px;flex:1 0 auto;font-size:11px}.action.warn{margin-left:0}.side{display:flex;gap:10px}.panel{padding:13px}.slider-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:17px}.control-label{font-size:11px}.control{margin-bottom:16px}.tools{grid-template-columns:repeat(4,minmax(0,1fr))}.tool{font-size:10px;padding:9px 2px}.subtitle{font-size:12px}.colors{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:600px){.page{padding:12px 12px 24px}.hero{margin-bottom:13px}.stage{border-radius:16px}.stage-top{top:8px;left:8px;right:8px}.stage-tag{font-size:10px;padding:6px 7px}.stage canvas{aspect-ratio:760/570}.stage-tip{font-size:10px;padding:6px 9px;bottom:9px}.actionbar{gap:6px}.action{padding:10px;flex:1 0 auto;font-size:11px}.action.warn{margin-left:0}.side{display:flex;gap:10px}.panel{padding:13px}.slider-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:17px}.control-label{font-size:11px}.control{margin-bottom:16px}.tools{grid-template-columns:repeat(5,minmax(0,1fr))}.tool{font-size:10px;padding:9px 2px}.subtitle{font-size:12px}.colors{grid-template-columns:repeat(4,1fr)}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
 <div class="page">
 <header><a class="home" href="../HTML%20GAME%20CENTER/">← &nbsp; 🎮 HTML GAME CENTER</a><div class="head-right"><span class="pill live">LIVE PHYSICS</span><span class="pill" id="fps">60 FPS</span></div></header>
-<section class="hero"><p class="eyebrow">DIGITAL SANDBOX / EXPERIMENT 001</p><h1>Liquid <span>Lab.</span> 💧</h1><p class="subtitle">Pour it. Push it. Bend gravity. Make a mess. A satisfying interactive fluid simulator with physics you can customize.</p></section>
+<section class="hero"><p class="eyebrow">DIGITAL SANDBOX / EXPERIMENT 001</p><h1>Liquid <span>Lab.</span> 💧</h1><p class="subtitle">Grab a handful of water, lift it, stretch it, and watch it flow back together. Bend gravity and customize the physics.</p></section>
 <div class="workspace">
 <div class="stage-shell">
-<div class="stage"><canvas id="fluid" aria-label="Interactive liquid simulation"></canvas><div class="stage-top"><div class="stage-tag">💧 <strong id="count">0</strong> PARTICLES</div><div class="stage-tag" id="state">● SIMULATION LIVE</div></div><div class="stage-tip" id="tip">Drag anywhere to pour liquid</div></div>
+<div class="stage"><canvas id="fluid" aria-label="Interactive liquid simulation"></canvas><div class="stage-top"><div class="stage-tag">💧 <strong id="count">0</strong> PARTICLES</div><div class="stage-tag" id="state">● SIMULATION LIVE</div></div><div class="stage-tip" id="tip">Drag to pour · Select Grab to lift the water</div></div>
 <div class="actionbar">
 <button class="action primary" id="fill">💧 Add water</button>
 <button class="action" id="rain">🌧️ Rain: OFF</button>
@@ -90,6 +90,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 <div class="side">
 <section class="panel"><h2>01 / Interaction</h2><div class="tools">
 <button class="tool active" data-tool="pour">💧 Pour</button>
+<button class="tool" data-tool="grab">✋ Grab</button>
 <button class="tool" data-tool="stir">🌀 Push</button>
 <button class="tool" data-tool="wall">🪨 Wall</button>
 <button class="tool" data-tool="erase">🧽 Erase</button>
@@ -121,25 +122,30 @@ let fps=60, ticks=0, fpsTime=0, last=0, remaining=0, pointer=null, preset="";
 const settings={velocity:9,angle:45,gravity:.32,viscosity:24,pressure:65,bounce:20,flow:7,brush:50,speed:1};
 const help={
  pour:"Drag over the tank to release a stream of liquid. Change velocity and direction below.",
+ grab:"Touch a pool of water, hold, then drag. The liquid follows your hand and drops when released.",
  stir:"Move your finger through the water to create swirling currents. Try a larger brush!",
  wall:"Drag to build solid barriers. The liquid will flow and splash around them.",
  erase:"Drag over particles or barriers to remove them from the tank."
 };
 const swatches={ocean:[91,196,255],mint:[103,244,190],purple:[182,151,255],lava:[255,154,102]};
 let sprite=null, hover=null;
+const fluidMask=document.createElement("canvas");
+fluidMask.width=380;fluidMask.height=260;
+const maskCtx=fluidMask.getContext("2d",{willReadFrequently:true});
+const MASK_SCALE=fluidMask.width/W;
+let liquidDirty=true,liquidFrames=0;
 function rnd(a,b){return a+Math.random()*(b-a)}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function makeSprite(){
- const cc=document.createElement("canvas");cc.width=48;cc.height=48;
- const gg=cc.getContext("2d");
- const c=swatches[palette];
- const gr=gg.createRadialGradient(24,24,1,24,24,24);
- gr.addColorStop(0,"rgba(245,253,255,.99)");
- gr.addColorStop(.18,"rgba("+c.join(",")+",.96)");
- gr.addColorStop(.37,"rgba("+c.join(",")+",.78)");
- gr.addColorStop(.55,"rgba("+c.join(",")+",.34)");
- gr.addColorStop(1,"rgba("+c.join(",")+",0)");
- gg.fillStyle=gr;gg.fillRect(0,0,48,48);sprite=cc;
+ const c=document.createElement("canvas");c.width=64;c.height=64;
+ const b=c.getContext("2d"),grad=b.createRadialGradient(32,32,0,32,32,32);
+ grad.addColorStop(0,"rgba(255,255,255,1)");
+ grad.addColorStop(.24,"rgba(255,255,255,.97)");
+ grad.addColorStop(.55,"rgba(255,255,255,.57)");
+ grad.addColorStop(.82,"rgba(255,255,255,.13)");
+ grad.addColorStop(1,"rgba(255,255,255,0)");
+ b.fillStyle=grad;b.fillRect(0,0,64,64);
+ sprite=c;liquidDirty=true;
 }
 makeSprite();
 function resize(){
@@ -225,7 +231,7 @@ function physics(){
      const d=Math.sqrt(d2)||.0001;
      let shift;
      if(d<minimum)shift=(minimum-d)*force;
-     else shift=-(near-d)*.0045*(1-settings.viscosity/250);
+     else shift=-(near-d)*(.012+settings.viscosity*.000065);
      const sx=dx/d*shift,sy=dy/d*shift;
      p.x-=sx;p.y-=sy;q.x+=sx;q.y+=sy;
     }
@@ -253,6 +259,15 @@ function brush(){
   const a=settings.angle*Math.PI/180,mag=settings.velocity;
   const mvx=clamp(pointer.dx*.16,-7,7),mvy=clamp(pointer.dy*.16,-7,7);
   add(mx,my,settings.flow,Math.cos(a)*mag+mvx,-Math.sin(a)*mag+mvy);
+ }else if(tool==="grab"){
+  if(pointer.grabbed&&pointer.grabbed.length){
+   for(const held of pointer.grabbed){
+    const p=held.p;
+    const tx=mx+held.ox*.6,ty=my+held.oy*.6;
+    p.vx=clamp(p.vx*.73+(tx-p.x)*.21+pointer.dx*.075,-16,16);
+    p.vy=clamp(p.vy*.73+(ty-p.y)*.21+pointer.dy*.075,-16,16);
+   }
+  }
  }else if(tool==="stir"){
   const force=settings.velocity*.11+1.9;
   for(const p of particles){
@@ -290,8 +305,19 @@ function worldPos(e){
 canvas.addEventListener("pointerdown",e=>{
  e.preventDefault();canvas.setPointerCapture(e.pointerId);
  const p=worldPos(e);
- pointer={id:e.pointerId,down:true,x:p.x,y:p.y,dx:0,dy:0,lastWX:p.x,lastWY:p.y,hasWall:false};
- if(paused&&tool!=="wall")paused=false;
+ pointer={id:e.pointerId,down:true,x:p.x,y:p.y,dx:0,dy:0,lastWX:p.x,lastWY:p.y,hasWall:false,grabbed:[]};
+ if(tool==="grab"){
+  let nearby=particles.filter(q=>Math.hypot(q.x-p.x,q.y-p.y)<settings.brush*.94);
+  if(!nearby.length){
+   let nearest=null,d=Infinity;
+   for(const q of particles){const n=Math.hypot(q.x-p.x,q.y-p.y);if(n<d){d=n;nearest=q}}
+   if(nearest&&d<settings.brush*1.8)
+    nearby=particles.filter(q=>Math.hypot(q.x-nearest.x,q.y-nearest.y)<settings.brush*.85);
+  }
+  const stride=Math.max(1,Math.ceil(nearby.length/190));
+  pointer.grabbed=nearby.filter((q,i)=>i%stride===0).map(q=>({p:q,ox:q.x-p.x,oy:q.y-p.y}));
+ }
+ if(paused&&tool!=="wall"){paused=false;$("#pause").textContent="⏸ Pause";$("#pause").classList.remove("active");$("#state").textContent="● SIMULATION LIVE"};
  brush();
 });
 canvas.addEventListener("pointermove",e=>{
@@ -310,6 +336,36 @@ canvas.addEventListener("pointerleave",()=>{if(!pointer)hover=null});
 function roundRect(x,y,w,h,r){
  ctx.beginPath();ctx.roundRect(x,y,w,h,r);
 }
+// Convert overlapping particles into a connected, softly shaded liquid surface.
+// The threshold merges nearby blobs so it does not look like a collection of dots.
+function drawLiquid(){
+ if(liquidDirty||!paused&&liquidFrames++%2===0){
+  const fw=fluidMask.width,fh=fluidMask.height,scale=MASK_SCALE;
+  maskCtx.clearRect(0,0,fw,fh);
+  maskCtx.globalCompositeOperation="lighter";
+  for(const p of particles)
+   maskCtx.drawImage(sprite,(p.x-17)*scale,(p.y-17)*scale,34*scale,34*scale);
+  maskCtx.globalCompositeOperation="source-over";
+  const img=maskCtx.getImageData(0,0,fw,fh),data=img.data,base=swatches[palette];
+  for(let i=0;i<data.length;i+=4){
+   const a=data[i+3];
+   if(a<=51){data[i+3]=0;continue}
+   let t=clamp((a-51)/63,0,1);
+   t=t*t*(3-2*t);
+   const y=Math.floor(i/4/fw)/fh;
+   const shimmer=Math.max(0,1-t)*29;
+   const light=(1-y*.15);
+   data[i]=Math.min(255,base[0]*light+shimmer+8);
+   data[i+1]=Math.min(255,base[1]*light+shimmer+5);
+   data[i+2]=Math.min(255,base[2]*light+shimmer);
+   data[i+3]=Math.round(t*240);
+  }
+  maskCtx.putImageData(img,0,0);
+  liquidDirty=false;
+ }
+ ctx.imageSmoothingEnabled=true;
+ ctx.drawImage(fluidMask,0,0,W,H);
+}
 function draw(){
  const cx=canvas.width,cy=canvas.height;
  ctx.setTransform(cx/W,0,0,cy/H,0,0);
@@ -325,29 +381,18 @@ function draw(){
  light.addColorStop(0,"#3986c20d");light.addColorStop(1,"#3986c200");
  ctx.fillStyle=light;ctx.fillRect(0,0,W,H);
  ctx.strokeStyle="#7fcaff1e";ctx.lineWidth=3;ctx.strokeRect(2,2,W-4,H-4);
+ drawLiquid();
  for(const o of walls){
   ctx.lineCap="round";ctx.strokeStyle="#a4c7ef26";ctx.lineWidth=28;ctx.beginPath();ctx.moveTo(o.ax,o.ay);ctx.lineTo(o.bx,o.by);ctx.stroke();
   ctx.strokeStyle="#91a9c5";ctx.lineWidth=14;ctx.beginPath();ctx.moveTo(o.ax,o.ay);ctx.lineTo(o.bx,o.by);ctx.stroke();
   ctx.strokeStyle="#e6f5ff";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(o.ax-1,o.ay-2);ctx.lineTo(o.bx-1,o.by-2);ctx.stroke();
  }
- const rgb=swatches[palette],col="rgba("+rgb.join(",")+",";
- ctx.lineCap="round";
- ctx.strokeStyle=col+".1)";ctx.lineWidth=7;ctx.beginPath();
- for(const p of particles){
-  if(Math.hypot(p.vx,p.vy)>3){ctx.moveTo(p.x,p.y);ctx.lineTo(p.x-p.vx*.7,p.y-p.vy*.7)}
- }
- ctx.stroke();
- ctx.globalCompositeOperation="screen";
- for(const p of particles)ctx.drawImage(sprite,p.x-12,p.y-12,24,24);
- ctx.globalCompositeOperation="source-over";
- ctx.fillStyle=col+".86)";ctx.beginPath();
- for(const p of particles){ctx.moveTo(p.x+R*.66,p.y);ctx.arc(p.x,p.y,R*.66,0,Math.PI*2)}
- ctx.fill();
+
  if(pointer&&pointer.down||hover&&tool!=="pour"){
   const pos=pointer&&pointer.down?pointer:hover;
   if(pos){
    ctx.save();
-   ctx.setLineDash([6,5]);ctx.strokeStyle="#d4edff91";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(pos.x,pos.y,tool==="pour"?13:settings.brush,0,Math.PI*2);ctx.stroke();ctx.restore();
+   ctx.setLineDash([6,5]);ctx.strokeStyle=tool==="grab"?"#9bffe0":"#d4edff91";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(pos.x,pos.y,tool==="pour"?13:settings.brush,0,Math.PI*2);ctx.stroke();ctx.restore();
   }
  }
  if(particles.length===0){
@@ -405,7 +450,7 @@ for(const k of Object.keys(settings)){
 function setTool(next){
  tool=next;document.querySelectorAll("[data-tool]").forEach(b=>b.classList.toggle("active",b.dataset.tool===next));
  $("#toolhelp").textContent=help[next];
- const messages={pour:"Drag anywhere to pour liquid",stir:"Drag to push the liquid around",wall:"Drag to create an obstacle",erase:"Drag to erase particles or walls"};
+ const messages={pour:"Drag anywhere to pour liquid",grab:"Hold and drag water, then release to splash",stir:"Drag to push the liquid around",wall:"Drag to create an obstacle",erase:"Drag to erase particles or walls"};
  $("#tip").textContent=messages[next];
 }
 document.querySelectorAll("[data-tool]").forEach(b=>b.addEventListener("click",()=>setTool(b.dataset.tool)));
@@ -420,7 +465,7 @@ document.querySelectorAll("[data-preset]").forEach(b=>b.addEventListener("click"
  document.querySelectorAll(".preset").forEach(e=>e.classList.toggle("active",e===b));
 }));
 document.querySelectorAll("[data-color]").forEach(b=>b.addEventListener("click",()=>{
- palette=b.dataset.color;makeSprite();
+ palette=b.dataset.color;liquidDirty=true;
  document.querySelectorAll(".color").forEach(e=>e.classList.toggle("active",e===b));
 }));
 $("#fill").addEventListener("click",()=>{
@@ -431,7 +476,7 @@ $("#fill").addEventListener("click",()=>{
   const y=clamp(110+Math.floor(i/cols)*10+rnd(-1,1),R+5,H-R-5);
   add(x,y,1,rnd(-1,1),rnd(0,1.7));
  }
- $("#count").textContent=particles.length;
+ $("#count").textContent=particles.length;liquidDirty=true;
 });
 $("#rain").addEventListener("click",()=>{
  rain=!rain;
@@ -447,9 +492,10 @@ $("#shake").addEventListener("click",splash);
 $("#pause").addEventListener("click",()=>{
  paused=!paused;$("#pause").textContent=paused?"▶ Resume":"⏸ Pause";
  $("#pause").classList.toggle("active",paused);
+ liquidDirty=true;
  $("#state").textContent=paused?"Ⅱ SIMULATION PAUSED":"● SIMULATION LIVE";
 });
-$("#clear").addEventListener("click",()=>{particles=[];walls=[];$("#count").textContent="0"});
+$("#clear").addEventListener("click",()=>{particles=[];walls=[];liquidDirty=true;$("#count").textContent="0"});
 refresh();
 })();
 </script>
