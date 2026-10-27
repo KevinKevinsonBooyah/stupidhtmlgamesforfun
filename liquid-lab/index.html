@@ -43,6 +43,27 @@ h1 span{background:linear-gradient(100deg,#83d8ff,#76baff 49%,#b7a2ff);backgroun
 .action.active{background:#23405c;border-color:#76c5ff;color:#bfeaff}
 .action.primary{background:#286999;border-color:#3b8abc;color:#effaff}
 .action.warn{margin-left:auto}
+[hidden]{display:none!important}
+.mode-nav{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 15px;border:1px solid #344b68;background:#111f33;padding:7px;border-radius:14px}
+.mode-tab{border:1px solid transparent;border-radius:10px;background:transparent;color:#a2b9d6;min-height:43px;padding:10px 16px;font-size:12px;font-weight:800;display:flex;align-items:center;gap:7px;text-decoration:none}
+.mode-tab:hover{background:#20344f;color:#e8f5ff}
+.mode-tab.active{background:#2c4d70;color:#e9f8ff;border-color:#486e91}
+.mode-tab .num{font-size:10px;background:#376085;border-radius:6px;padding:2px 5px;color:#dcecff}
+.mobile-mode{margin-left:auto;display:none;color:#d6ffeb;background:#255c4d;border-color:#3c886f}
+@media(pointer:coarse){.mobile-mode{display:flex}}
+.templates-view{background:linear-gradient(140deg,#152840,#101c2e);border:1px solid #3b5676;border-radius:20px;padding:clamp(14px,3vw,26px);margin-bottom:18px;box-shadow:0 14px 35px #0002}
+.templates-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 17px}
+.templates-head h2{font-size:23px;letter-spacing:-.03em;margin:0}
+.templates-head p{font-size:12px;color:#9bb0c9;margin:4px 0 0}
+.templates-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.template-card{padding:16px 14px;text-align:left;background:#1b3049;border:1px solid #3e5876;border-radius:14px;color:#e4f1ff;min-height:124px;transition:background .15s,border-color .15s,transform .15s;display:flex;flex-direction:column;gap:6px}
+.template-card:hover{background:#264261;border-color:#75b3e7;transform:translateY(-2px)}
+.template-card.active{border-color:#a6dbff;background:#315476}
+.template-card .emoji{font-size:24px;line-height:1.2}
+.template-card strong{font-size:14px;line-height:1.3}
+.template-card small{color:#a9bfd6;font-size:11px;line-height:1.45}
+.template-footer{font-size:11px;color:#97abc2;margin-top:14px}
+@media(max-width:600px){.mode-nav{padding:6px;gap:5px}.mode-tab{padding:10px;font-size:11px;min-height:41px;flex:1;justify-content:center}.mobile-mode{margin-left:0}.templates-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.template-card{padding:12px;min-height:119px}.template-card strong{font-size:12px}.templates-head h2{font-size:20px}}
 .panel{background:linear-gradient(155deg,#17253b,#121e32);border:1px solid #30425b;border-radius:19px;padding:15px;box-shadow:0 14px 35px #030a1629}
 .side{display:flex;flex-direction:column;gap:13px;min-width:0}
 .panel h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#e1edfc;margin:0 0 13px;font-weight:800}
@@ -81,7 +102,27 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 <div class="page">
 <header><a class="home" href="../HTML%20GAME%20CENTER/">← &nbsp; 🎮 HTML GAME CENTER</a><div class="head-right"><span class="pill live">LIVE PHYSICS</span><span class="pill" id="fps">60 FPS</span></div></header>
 <section class="hero"><p class="eyebrow">DIGITAL SANDBOX / EXPERIMENT 001</p><h1>Liquid <span>Lab.</span> 💧</h1><p class="subtitle">Grab a handful of water, lift it, stretch it, and watch it flow back together. Bend gravity and customize the physics.</p></section>
-<div class="workspace">
+<nav class="mode-nav" aria-label="Liquid Lab modes">
+<button type="button" class="mode-tab active" id="nav-sim" aria-pressed="true">💧 Simulator</button>
+<button type="button" class="mode-tab" id="nav-templates" aria-pressed="false">🧪 Templates <span class="num">9</span></button>
+<a class="mode-tab mobile-mode" id="nav-slime" href="./slime.html">🟢 Slime Mode <span class="num">2 TOUCH</span></a>
+</nav>
+<section id="templates-view" class="templates-view" hidden>
+ <div class="templates-head"><div><h2>Choose a template</h2><p>Ready-made physics recipes. Tap one to apply it to your water.</p></div><span class="pill">9 EXPERIMENTS</span></div>
+ <div class="templates-grid">
+ <button class="template-card preset" data-preset="calm"><span class="emoji">🌊</span><strong>Calm Pool</strong><small>Relaxed waves, smooth and gentle</small></button>
+ <button class="template-card preset" data-preset="fall"><span class="emoji">💦</span><strong>Waterfall</strong><small>Fast-moving flowing water</small></button>
+ <button class="template-card preset" data-preset="zero"><span class="emoji">🪐</span><strong>Zero Gravity</strong><small>Floating droplets in space</small></button>
+ <button class="template-card preset" data-preset="chaos"><span class="emoji">⚡</span><strong>Chaos Mode</strong><small>High velocity, huge splashes</small></button>
+ <button class="template-card preset" data-preset="honey"><span class="emoji">🍯</span><strong>Thick Honey</strong><small>Heavy, sticky, very slow flow</small></button>
+ <button class="template-card preset" data-preset="geyser"><span class="emoji">⛲</span><strong>Geyser</strong><small>High-pressure rising water</small></button>
+ <button class="template-card preset" data-preset="tsunami"><span class="emoji">🌊</span><strong>Tsunami</strong><small>Forceful rolling liquid</small></button>
+ <button class="template-card preset" data-preset="jelly"><span class="emoji">🟣</span><strong>Jelly</strong><small>Elastic, sticky and wobbly</small></button>
+ <button class="template-card preset" data-preset="slow"><span class="emoji">🐌</span><strong>Slow Motion</strong><small>Chilled-out liquid physics</small></button>
+ </div>
+ <p class="template-footer">Change the sliders afterward to customize any template.</p>
+</section>
+<div class="workspace" id="sim-workspace">
 <div class="stage-shell">
 <div class="stage"><canvas id="fluid" aria-label="Interactive liquid simulation"></canvas><div class="stage-top"><div class="stage-tag">💧 <strong id="count">0</strong> PARTICLES</div><div class="stage-tag" id="state">● SIMULATION LIVE</div></div><div class="stage-tip" id="tip">Drag to pour · Select Grab to lift the water</div></div>
 <div class="actionbar">
@@ -106,21 +147,14 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 <div class="control"><div class="control-label"><label for="velocity">Launch velocity</label><output id="velocity-out">9.0</output></div><input id="velocity" type="range" min="0" max="25" step=".5" value="9"></div>
 <div class="control"><div class="control-label"><label for="angle">Launch direction</label><output id="angle-out">45°</output></div><input id="angle" type="range" min="0" max="360" step="5" value="45"></div>
 <div class="control"><div class="control-label"><label for="gravity">Gravity</label><output id="gravity-out">0.32</output></div><input id="gravity" type="range" min="0" max="1.4" step=".02" value=".32"></div>
-<div class="control"><div class="control-label"><label for="viscosity">Viscosity</label><output id="viscosity-out">24%</output></div><input id="viscosity" type="range" min="0" max="100" step="1" value="24"></div>
+<div class="control"><div class="control-label"><label for="viscosity">Viscosity / thickness</label><output id="viscosity-out">24%</output></div><input id="viscosity" type="range" min="0" max="100" step="1" value="24"></div>
 <div class="control"><div class="control-label"><label for="pressure">Fluid pressure</label><output id="pressure-out">65%</output></div><input id="pressure" type="range" min="10" max="100" step="1" value="65"></div>
 <div class="control"><div class="control-label"><label for="bounce">Bounce</label><output id="bounce-out">20%</output></div><input id="bounce" type="range" min="0" max="100" step="1" value="20"></div>
 <div class="control"><div class="control-label"><label for="flow">Pour amount</label><output id="flow-out">7</output></div><input id="flow" type="range" min="1" max="14" step="1" value="7"></div>
 <div class="control"><div class="control-label"><label for="brush">Brush size</label><output id="brush-out">50px</output></div><input id="brush" type="range" min="16" max="110" step="2" value="50"></div>
 <div class="control"><div class="control-label"><label for="speed">Time speed</label><output id="speed-out">1.0×</output></div><input id="speed" type="range" min=".25" max="2" step=".05" value="1"></div>
 </div><div class="reset-options"><button class="reset-settings" id="reset-settings">↺ Reset settings</button></div></section>
-<section class="panel"><h2>03 / Quick experiments</h2><div class="presets"><button class="preset" data-preset="calm">🌊 Calm pool</button><button class="preset" data-preset="fall">💦 Waterfall</button><button class="preset" data-preset="zero">🪐 Zero gravity</button><button class="preset" data-preset="chaos">⚡ Chaos mode</button>
-<button class="preset" data-preset="honey">🍯 Thick honey</button>
-<button class="preset" data-preset="geyser">⛲ Geyser</button>
-<button class="preset" data-preset="tsunami">🌊 Tsunami</button>
-<button class="preset" data-preset="jelly">🟣 Jelly</button>
-<button class="preset" data-preset="slow">🐌 Slow motion</button>
-</div><p class="preset-grid-note">9 different physics presets. Choose one, then fine-tune the sliders.</p></section>
-<section class="panel palette-panel"><h2>04 / Liquid color</h2><div class="colors"><button class="color active" data-color="ocean" aria-label="Ocean blue" title="Ocean blue" style="--swatch:#6bcaff"><i></i></button><button class="color" data-color="mint" aria-label="Mint green" title="Mint green" style="--swatch:#6ff5c0"><i></i></button><button class="color" data-color="purple" aria-label="Plasma purple" title="Plasma purple" style="--swatch:#b799ff"><i></i></button><button class="color" data-color="lava" aria-label="Lava orange" title="Lava orange" style="--swatch:#ff986b"><i></i></button></div><p class="panel-note">Try drawing walls, then turn gravity upside down. The particles flow around your creations.</p></section>
+<section class="panel palette-panel"><h2>03 / Liquid color</h2><div class="colors"><button class="color active" data-color="ocean" aria-label="Ocean blue" title="Ocean blue" style="--swatch:#6bcaff"><i></i></button><button class="color" data-color="mint" aria-label="Mint green" title="Mint green" style="--swatch:#6ff5c0"><i></i></button><button class="color" data-color="purple" aria-label="Plasma purple" title="Plasma purple" style="--swatch:#b799ff"><i></i></button><button class="color" data-color="lava" aria-label="Lava orange" title="Lava orange" style="--swatch:#ff986b"><i></i></button></div><p class="panel-note">Try drawing walls, then turn gravity upside down. The particles flow around your creations.</p></section>
 </div></div>
 <div class="footer">HTML GAME CENTER · No installation needed · Touch and mouse supported</div>
 </div>
@@ -276,7 +310,10 @@ function collide(p){
 }
 function physics(){
  const grav=(flipped?-1:1)*settings.gravity;
- const damp=1-(settings.viscosity/100)*.014;
+ const viscous=Math.pow(settings.viscosity/100,2.1);
+ // High viscosity now actually resists flow. Honey spreads slowly,
+ // while jelly stays cohesive and wobbles as a single mass.
+ const damp=.996-viscous*.126;
  for(const p of particles){
   p.vy+=grav;
   p.vx=clamp(p.vx*damp,-24,24);
@@ -287,6 +324,7 @@ function physics(){
  }
  // Reusable typed-array spatial hash: no Maps or per-frame neighbor arrays.
  const minimum=8.3,near2=H2*H2,force=.32+.0027*settings.pressure;
+ const cohesion=.009+viscous*.077;
  for(let iter=0;iter<2;iter++){
   cellHead.fill(-1);
   for(let i=0;i<particles.length;i++){
@@ -306,7 +344,7 @@ function physics(){
       const q=particles[j],dx=q.x-p.x,dy=q.y-p.y,d2=dx*dx+dy*dy;
       if(d2>=near2)continue;
       const dist=Math.sqrt(d2)||.0001;
-      const shift=dist<minimum?(minimum-dist)*force:-(H2-dist)*(.012+settings.viscosity*.000065);
+      const shift=dist<minimum?(minimum-dist)*force:-(H2-dist)*cohesion;
       const sx=dx/dist*shift,sy=dy/dist*shift;
       p.x-=sx;p.y-=sy;q.x+=sx;q.y+=sy;
      }
@@ -318,6 +356,34 @@ function physics(){
  for(const p of particles){
   p.vx=clamp((p.x-p.px)*.995,-25,25);
   p.vy=clamp((p.y-p.py)*.995,-25,25);
+ }
+ // Neighbor-to-neighbor velocity blending provides genuinely syrupy
+ // behavior instead of simply slowing down the whole scene.
+ if(viscous>.025){
+  const mix=viscous*.20;
+  cellHead.fill(-1);
+  for(let i=0;i<particles.length;i++){
+   const p=particles[i],col=Math.floor(p.x/S),row=Math.floor(p.y/S);
+   const key=Math.max(0,Math.min(GRID_ROWS-1,row))*GCOLS+Math.max(0,Math.min(GCOLS-1,col));
+   cellNext[i]=cellHead[key];cellHead[key]=i;
+  }
+  for(let i=0;i<particles.length;i++){
+   const p=particles[i],cx=Math.floor(p.x/S),cy=Math.floor(p.y/S);
+   for(let yy=-1;yy<=1;yy++){
+    const ry=cy+yy;if(ry<0||ry>=GRID_ROWS)continue;
+    for(let xx=-1;xx<=1;xx++){
+     const rx=cx+xx;if(rx<0||rx>=GCOLS)continue;
+     for(let j=cellHead[ry*GCOLS+rx];j!==-1;j=cellNext[j]){
+      if(j<=i)continue;
+      const q=particles[j],dx=p.x-q.x,dy=p.y-q.y,d2=dx*dx+dy*dy;
+      if(d2>=near2)continue;
+      const m=mix*(1-Math.sqrt(d2)/H2);
+      const dvx=(q.vx-p.vx)*m,dvy=(q.vy-p.vy)*m;
+      p.vx+=dvx;p.vy+=dvy;q.vx-=dvx;q.vy-=dvy;
+     }
+    }
+   }
+  }
  }
 }
 function splash(){
@@ -547,6 +613,11 @@ function updateStats(time){
 function frame(time){
  if(!last)last=time;
  let dt=Math.min((time-last)/1000,.06);last=time;
+ if($("#sim-workspace").hidden){
+  remaining=0;
+  requestAnimationFrame(frame);
+  return;
+ }
  if(!paused){
   remaining=Math.min(remaining+dt*settings.speed,.06);
   let count=0;
@@ -595,15 +666,28 @@ const presets={
  fall:{velocity:16,angle:270,gravity:.66,viscosity:12,pressure:75,bounce:18,flow:10,speed:1},
  zero:{velocity:9,angle:90,gravity:0,viscosity:18,pressure:75,bounce:85,flow:8,speed:1},
  chaos:{velocity:22,angle:225,gravity:1.05,viscosity:0,pressure:92,bounce:78,flow:14,speed:1.35},
- honey:{velocity:3,angle:55,gravity:.23,viscosity:96,pressure:28,bounce:5,flow:5,brush:60,speed:1},
+ honey:{velocity:2.5,angle:55,gravity:.27,viscosity:100,pressure:63,bounce:2,flow:5,brush:60,speed:.9},
  geyser:{velocity:23,angle:90,gravity:.56,viscosity:8,pressure:82,bounce:16,flow:11,brush:48,speed:1},
  tsunami:{velocity:18,angle:0,gravity:.52,viscosity:17,pressure:98,bounce:24,flow:13,brush:72,speed:1},
- jelly:{velocity:5,angle:110,gravity:.18,viscosity:88,pressure:94,bounce:55,flow:6,brush:55,speed:1},
+ jelly:{velocity:5,angle:110,gravity:.24,viscosity:94,pressure:100,bounce:78,flow:6,brush:55,speed:1},
  slow:{velocity:9,angle:45,gravity:.26,viscosity:39,pressure:67,bounce:19,flow:7,brush:50,speed:.35}
 };
+function showSection(section){
+ const templates=section==="templates";
+ $("#templates-view").hidden=!templates;
+ $("#sim-workspace").hidden=templates;
+ $("#nav-sim").classList.toggle("active",!templates);
+ $("#nav-templates").classList.toggle("active",templates);
+ $("#nav-sim").setAttribute("aria-pressed",String(!templates));
+ $("#nav-templates").setAttribute("aria-pressed",String(templates));
+ if(!templates){liquidDirty=true;remaining=0}
+}
+$("#nav-sim").addEventListener("click",()=>showSection("sim"));
+$("#nav-templates").addEventListener("click",()=>showSection("templates"));
 document.querySelectorAll("[data-preset]").forEach(b=>b.addEventListener("click",()=>{
  Object.assign(settings,presets[b.dataset.preset]);refresh();
  document.querySelectorAll(".preset").forEach(e=>e.classList.toggle("active",e===b));
+ showSection("sim");
 }));
 document.querySelectorAll("[data-color]").forEach(b=>b.addEventListener("click",()=>{
  palette=b.dataset.color;liquidDirty=true;
