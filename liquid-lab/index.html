@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a1222">
+<meta name="description" content="Liquid Lab, an interactive, satisfying fluid playground. Pour, stir, sculpt, and change the physics.">
+<title>Liquid Lab | HTML GAME CENTER</title>
+<style>
+:root{color-scheme:dark;--bg:#0a1222;--panel:#141f34;--line:#293c57;--text:#f1f7ff;--muted:#9eb0cb;--blue:#79c9ff;--accent:#69baff}
+*{box-sizing:border-box}
+html{min-height:100%;background:var(--bg)}
+body{margin:0;background:radial-gradient(ellipse at 20% -15%,#1d3453 0%,#0a1222 62%);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input{font:inherit}
+button{cursor:pointer;touch-action:manipulation}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #98dbff;outline-offset:3px}
+.page{width:min(1300px,100%);margin:auto;padding:20px 22px 32px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:17px;flex-wrap:wrap}
+.home{display:inline-flex;align-items:center;gap:8px;color:#bdd6f7;text-decoration:none;font-size:12px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}
+.home:hover{color:white}
+.head-right{display:flex;align-items:center;gap:9px}
+.pill{border:1px solid #38516b;background:#192b40a8;border-radius:99px;font-size:11px;color:#b2c6dc;padding:6px 11px}
+.live{display:inline-flex;align-items:center;gap:6px;font-weight:750}
+.live::before{content:"";width:6px;height:6px;background:#64ebc4;border-radius:99px;box-shadow:0 0 9px #5fffc4}
+.hero{margin-bottom:20px}
+.eyebrow{font-size:11px;letter-spacing:.19em;font-weight:800;text-transform:uppercase;color:#72ccff;margin:0 0 7px}
+h1{font-size:clamp(30px,4vw,47px);line-height:1.07;letter-spacing:-.047em;margin:0 0 9px;font-weight:850}
+h1 span{background:linear-gradient(100deg,#83d8ff,#76baff 49%,#b7a2ff);background-clip:text;-webkit-background-clip:text;color:transparent}
+.subtitle{font-size:13px;color:var(--muted);line-height:1.65;margin:0;max-width:620px}
+.workspace{display:grid;grid-template-columns:minmax(0,1fr) 325px;align-items:start;gap:17px}
+.stage-shell{min-width:0}
+.stage{position:relative;overflow:hidden;border:1px solid #3c587b;border-radius:22px;background:#0c182a;box-shadow:0 20px 66px #030b1780,inset 0 0 0 1px #ffffff05;isolation:isolate}
+.stage canvas{display:block;width:100%;height:auto;aspect-ratio:760/520;touch-action:none;cursor:crosshair}
+.stage-top{position:absolute;z-index:2;top:13px;left:13px;right:13px;display:flex;justify-content:space-between;align-items:start;gap:10px;pointer-events:none}
+.stage-tag{background:#0b182cc9;color:#b9cce4;border:1px solid #ffffff1a;border-radius:9px;padding:7px 10px;font-size:11px;font-weight:700;backdrop-filter:blur(8px)}
+.stage-tag strong{color:#7dcfff;font-size:13px}
+.stage-tip{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);border:1px solid #ffffff18;border-radius:30px;padding:8px 12px;background:#061222ae;color:#c4dbf2;white-space:nowrap;font-size:11px;font-weight:700;pointer-events:none;box-shadow:0 4px 20px #06122240}
+.actionbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}
+.action{background:#16253e;border:1px solid #354961;border-radius:11px;color:#d9e9ff;padding:10px 13px;font-size:12px;font-weight:800;min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.action:hover{background:#263e60}
+.action.active{background:#23405c;border-color:#76c5ff;color:#bfeaff}
+.action.primary{background:#286999;border-color:#3b8abc;color:#effaff}
+.action.warn{margin-left:auto}
+.panel{background:linear-gradient(155deg,#17253b,#121e32);border:1px solid #30425b;border-radius:19px;padding:15px;box-shadow:0 14px 35px #030a1629}
+.side{display:flex;flex-direction:column;gap:13px;min-width:0}
+.panel h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#e1edfc;margin:0 0 13px;font-weight:800}
+.tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.tool{border:1px solid #40526c;border-radius:11px;background:#182842;padding:11px 7px;color:#bdcde2;font-size:12px;font-weight:750;min-height:42px}
+.tool:hover{background:#263c5b}
+.tool.active{background:linear-gradient(130deg,#285c82,#235072);color:#e1f5ff;border-color:#64c9fb;box-shadow:inset 0 0 0 1px #80d5ff14}
+.panel-note{font-size:11px;line-height:1.45;color:#95abc5;margin:10px 1px 0}
+.control{margin-bottom:15px}
+.control:last-child{margin-bottom:0}
+.control-label{display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:12px;font-weight:650;margin-bottom:8px}
+.control-label output{font-size:11px;color:#7bd5ff;font-weight:800;font-variant-numeric:tabular-nums}
+input[type=range]{display:block;width:100%;height:16px;appearance:none;-webkit-appearance:none;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:99px;background:linear-gradient(90deg,#4b91c5,#88d4f7)}
+input[type=range]::-moz-range-track{height:5px;border-radius:99px;background:linear-gradient(90deg,#4b91c5,#88d4f7)}
+input[type=range]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:17px;height:17px;border-radius:50%;background:#e7f7ff;border:3px solid #69baf3;box-shadow:0 1px 7px #0007;margin-top:-6px}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#e7f7ff;border:3px solid #69baf3;box-shadow:0 1px 7px #0007}
+.presets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.preset{background:#20314b;border:1px solid #405572;color:#d0def3;border-radius:10px;padding:10px 6px;font-size:11px;font-weight:750}
+.preset:hover,.preset.active{background:#315878;border-color:#7bcaed}
+.colors{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.color{height:37px;border:2px solid transparent;border-radius:10px;background:#1e304a;display:grid;place-items:center}
+.color i{display:block;width:19px;height:19px;border-radius:50%;background:var(--swatch);box-shadow:0 0 12px var(--swatch)}
+.color.active{border-color:#b5e7ff;background:#2a415d}
+.footer{color:#708aa9;font-size:11px;margin-top:20px;text-align:center}
+@media(max-width:970px){.workspace{grid-template-columns:minmax(0,1fr)}.side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.settings{grid-column:1/-1}.slider-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:22px}.palette-panel{grid-column:auto}}
+@media(max-width:600px){.page{padding:12px 12px 24px}.hero{margin-bottom:13px}.stage{border-radius:16px}.stage-top{top:8px;left:8px;right:8px}.stage-tag{font-size:10px;padding:6px 7px}.stage canvas{aspect-ratio:760/570}.stage-tip{font-size:10px;padding:6px 9px;bottom:9px}.actionbar{gap:6px}.action{padding:10px;flex:1 0 auto;font-size:11px}.action.warn{margin-left:0}.side{display:flex;gap:10px}.panel{padding:13px}.slider-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:17px}.control-label{font-size:11px}.control{margin-bottom:16px}.tools{grid-template-columns:repeat(4,minmax(0,1fr))}.tool{font-size:10px;padding:9px 2px}.subtitle{font-size:12px}.colors{grid-template-columns:repeat(4,1fr)}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="page">
+<header><a class="home" href="../HTML%20GAME%20CENTER/">← &nbsp; 🎮 HTML GAME CENTER</a><div class="head-right"><span class="pill live">LIVE PHYSICS</span><span class="pill" id="fps">60 FPS</span></div></header>
+<section class="hero"><p class="eyebrow">DIGITAL SANDBOX / EXPERIMENT 001</p><h1>Liquid <span>Lab.</span> 💧</h1><p class="subtitle">Pour it. Push it. Bend gravity. Make a mess. A satisfying interactive fluid simulator with physics you can customize.</p></section>
+<div class="workspace">
+<div class="stage-shell">
+<div class="stage"><canvas id="fluid" aria-label="Interactive liquid simulation"></canvas><div class="stage-top"><div class="stage-tag">💧 <strong id="count">0</strong> PARTICLES</div><div class="stage-tag" id="state">● SIMULATION LIVE</div></div><div class="stage-tip" id="tip">Drag anywhere to pour liquid</div></div>
+<div class="actionbar">
+<button class="action primary" id="fill">💧 Add water</button>
+<button class="action" id="rain">🌧️ Rain: OFF</button>
+<button class="action" id="reverse">↟ Flip gravity</button>
+<button class="action" id="shake">💥 Splash!</button>
+<button class="action" id="pause">⏸ Pause</button>
+<button class="action warn" id="clear">✕ Clear</button>
+</div>
+</div>
+<div class="side">
+<section class="panel"><h2>01 / Interaction</h2><div class="tools">
+<button class="tool active" data-tool="pour">💧 Pour</button>
+<button class="tool" data-tool="stir">🌀 Push</button>
+<button class="tool" data-tool="wall">🪨 Wall</button>
+<button class="tool" data-tool="erase">🧽 Erase</button>
+</div><p class="panel-note" id="toolhelp">Drag over the tank to release a stream of liquid. Change velocity and direction below.</p></section>
+<section class="panel settings"><h2>02 / Fluid physics</h2><div class="slider-grid">
+<div class="control"><div class="control-label"><label for="velocity">Launch velocity</label><output id="velocity-out">9.0</output></div><input id="velocity" type="range" min="0" max="25" step=".5" value="9"></div>
+<div class="control"><div class="control-label"><label for="angle">Launch direction</label><output id="angle-out">45°</output></div><input id="angle" type="range" min="0" max="360" step="5" value="45"></div>
+<div class="control"><div class="control-label"><label for="gravity">Gravity</label><output id="gravity-out">0.32</output></div><input id="gravity" type="range" min="0" max="1.4" step=".02" value=".32"></div>
+<div class="control"><div class="control-label"><label for="viscosity">Viscosity</label><output id="viscosity-out">24%</output></div><input id="viscosity" type="range" min="0" max="100" step="1" value="24"></div>
+<div class="control"><div class="control-label"><label for="pressure">Fluid pressure</label><output id="pressure-out">65%</output></div><input id="pressure" type="range" min="10" max="100" step="1" value="65"></div>
+<div class="control"><div class="control-label"><label for="bounce">Bounce</label><output id="bounce-out">20%</output></div><input id="bounce" type="range" min="0" max="100" step="1" value="20"></div>
+<div class="control"><div class="control-label"><label for="flow">Pour amount</label><output id="flow-out">7</output></div><input id="flow" type="range" min="1" max="14" step="1" value="7"></div>
+<div class="control"><div class="control-label"><label for="brush">Brush size</label><output id="brush-out">50px</output></div><input id="brush" type="range" min="16" max="110" step="2" value="50"></div>
+<div class="control"><div class="control-label"><label for="speed">Time speed</label><output id="speed-out">1.0×</output></div><input id="speed" type="range" min=".25" max="2" step=".05" value="1"></div>
+</div></section>
+<section class="panel"><h2>03 / Quick experiments</h2><div class="presets"><button class="preset" data-preset="calm">🌊 Calm pool</button><button class="preset" data-preset="fall">💦 Waterfall</button><button class="preset" data-preset="zero">🪐 Zero gravity</button><button class="preset" data-preset="chaos">⚡ Chaos mode</button></div></section>
+<section class="panel palette-panel"><h2>04 / Liquid color</h2><div class="colors"><button class="color active" data-color="ocean" aria-label="Ocean blue" title="Ocean blue" style="--swatch:#6bcaff"><i></i></button><button class="color" data-color="mint" aria-label="Mint green" title="Mint green" style="--swatch:#6ff5c0"><i></i></button><button class="color" data-color="purple" aria-label="Plasma purple" title="Plasma purple" style="--swatch:#b799ff"><i></i></button><button class="color" data-color="lava" aria-label="Lava orange" title="Lava orange" style="--swatch:#ff986b"><i></i></button></div><p class="panel-note">Try drawing walls, then turn gravity upside down. The particles flow around your creations.</p></section>
+</div></div>
+<div class="footer">HTML GAME CENTER · No installation needed · Touch and mouse supported</div>
+</div>
+<script>
+(() => {
+"use strict";
+const $ = s => document.querySelector(s);
+const canvas = $("#fluid"), ctx = canvas.getContext("2d", {alpha:false});
+const W=760, H=520, R=4.1, H2=18, S=18, GCOLS=50, LIMIT=950;
+let particles=[], walls=[], palette="ocean", tool="pour", rain=false, flipped=false, paused=false;
+let fps=60, ticks=0, fpsTime=0, last=0, remaining=0, pointer=null, preset="";
+const settings={velocity:9,angle:45,gravity:.32,viscosity:24,pressure:65,bounce:20,flow:7,brush:50,speed:1};
+const help={
+ pour:"Drag over the tank to release a stream of liquid. Change velocity and direction below.",
+ stir:"Move your finger through the water to create swirling currents. Try a larger brush!",
+ wall:"Drag to build solid barriers. The liquid will flow and splash around them.",
+ erase:"Drag over particles or barriers to remove them from the tank."
+};
+const swatches={ocean:[91,196,255],mint:[103,244,190],purple:[182,151,255],lava:[255,154,102]};
+let sprite=null, hover=null;
+function rnd(a,b){return a+Math.random()*(b-a)}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function makeSprite(){
+ const cc=document.createElement("canvas");cc.width=48;cc.height=48;
+ const gg=cc.getContext("2d");
+ const c=swatches[palette];
+ const gr=gg.createRadialGradient(24,24,1,24,24,24);
+ gr.addColorStop(0,"rgba(245,253,255,.99)");
+ gr.addColorStop(.18,"rgba("+c.join(",")+",.96)");
+ gr.addColorStop(.37,"rgba("+c.join(",")+",.78)");
+ gr.addColorStop(.55,"rgba("+c.join(",")+",.34)");
+ gr.addColorStop(1,"rgba("+c.join(",")+",0)");
+ gg.fillStyle=gr;gg.fillRect(0,0,48,48);sprite=cc;
+}
+makeSprite();
+function resize(){
+ const rect=canvas.getBoundingClientRect();
+ const dpr=Math.min(window.devicePixelRatio||1,2);
+ canvas.width=Math.max(1,Math.round(rect.width*dpr));
+ canvas.height=Math.max(1,Math.round(rect.height*dpr));
+}
+window.addEventListener("resize",resize);
+if(window.ResizeObserver)new ResizeObserver(resize).observe(canvas);
+resize();
+function add(x,y,n,dx=0,dy=0){
+ const max=Math.min(n,LIMIT-particles.length);
+ for(let i=0;i<max;i++){
+  const t=rnd(0,Math.PI*2),spread=Math.sqrt(Math.random())*9;
+  let px=clamp(x+Math.cos(t)*spread,R+1,W-R-1),py=clamp(y+Math.sin(t)*spread,R+1,H-R-1);
+  if(walls.some(o=>distanceSegment(px,py,o)<R+8))continue;
+  particles.push({x:px,y:py,px,py,vx:dx+rnd(-.7,.7),vy:dy+rnd(-.7,.7)});
+ }
+}
+function pool(amount=260){
+ for(let i=0;i<amount;i++){
+  if(particles.length>=LIMIT)break;
+  const col=i%31,row=Math.floor(i/31);
+  let x=170+col*11+rnd(-2,2),y=H-16-row*10+rnd(-2,2);
+  if(y>R+3)add(x,y,1,0,0);
+ }
+}
+pool(300);
+function distanceSegment(x,y,o){
+ const dx=o.bx-o.ax,dy=o.by-o.ay,den=dx*dx+dy*dy||1;
+ const t=clamp(((x-o.ax)*dx+(y-o.ay)*dy)/den,0,1);
+ return Math.hypot(x-(o.ax+dx*t),y-(o.ay+dy*t));
+}
+function collide(p){
+ if(p.x<R){p.x=R;p.px=p.x+p.vx*(settings.bounce/100)}
+ if(p.x>W-R){p.x=W-R;p.px=p.x+p.vx*(settings.bounce/100)}
+ if(p.y<R){p.y=R;p.py=p.y+p.vy*(settings.bounce/100)}
+ if(p.y>H-R){p.y=H-R;p.py=p.y+p.vy*(settings.bounce/100)}
+ for(const o of walls){
+  const x0=Math.min(o.ax,o.bx)-13,x1=Math.max(o.ax,o.bx)+13,y0=Math.min(o.ay,o.by)-13,y1=Math.max(o.ay,o.by)+13;
+  if(p.x<x0||p.x>x1||p.y<y0||p.y>y1)continue;
+  const dx=o.bx-o.ax,dy=o.by-o.ay,den=dx*dx+dy*dy||1;
+  const t=clamp(((p.x-o.ax)*dx+(p.y-o.ay)*dy)/den,0,1);
+  const ax=o.ax+t*dx,ay=o.ay+t*dy;
+  let ex=p.x-ax,ey=p.y-ay,dist=Math.hypot(ex,ey);
+  if(dist<R+7){
+   if(dist<.001){ex=-dy||1;ey=dx||0;dist=Math.hypot(ex,ey)}
+   const overlap=R+7-dist;
+   p.x+=ex/dist*overlap;p.y+=ey/dist*overlap;
+   p.px=p.x+p.vx*.09;p.py=p.y+p.vy*.09;
+  }
+ }
+}
+function physics(){
+ const grav=(flipped?-1:1)*settings.gravity;
+ const damp=1-(settings.viscosity/100)*.014;
+ for(const p of particles){
+  p.vy+=grav;
+  p.vx=clamp(p.vx*damp,-24,24);
+  p.vy=clamp(p.vy*damp,-24,24);
+  p.px=p.x;p.py=p.y;
+  p.x+=p.vx;p.y+=p.vy;
+  collide(p);
+ }
+ // Local, symmetric neighbor constraints make the dots behave like a cohesive fluid.
+ for(let iter=0;iter<2;iter++){
+  const grid=new Map();
+  for(let i=0;i<particles.length;i++){
+   const p=particles[i],key=Math.floor(p.x/S)+Math.floor(p.y/S)*GCOLS;
+   let b=grid.get(key);if(!b){b=[];grid.set(key,b)}b.push(i);
+  }
+  const minimum=8.3,near=H2,force=.32+.0027*settings.pressure;
+  for(let i=0;i<particles.length;i++){
+   const p=particles[i],gx=Math.floor(p.x/S),gy=Math.floor(p.y/S);
+   for(let yy=-1;yy<=1;yy++)for(let xx=-1;xx<=1;xx++){
+    const ids=grid.get((gy+yy)*GCOLS+gx+xx);
+    if(!ids)continue;
+    for(const j of ids){
+     if(j<=i)continue;
+     const q=particles[j],dx=q.x-p.x,dy=q.y-p.y,d2=dx*dx+dy*dy;
+     if(d2>=near*near)continue;
+     const d=Math.sqrt(d2)||.0001;
+     let shift;
+     if(d<minimum)shift=(minimum-d)*force;
+     else shift=-(near-d)*.0045*(1-settings.viscosity/250);
+     const sx=dx/d*shift,sy=dy/d*shift;
+     p.x-=sx;p.y-=sy;q.x+=sx;q.y+=sy;
+    }
+   }
+  }
+  for(const p of particles)collide(p);
+ }
+ for(const p of particles){
+  p.vx=clamp((p.x-p.px)*.995,-25,25);
+  p.vy=clamp((p.y-p.py)*.995,-25,25);
+ }
+}
+function splash(){
+ for(const p of particles){
+  const dx=p.x-W/2,dy=p.y-H*.64,d=Math.max(38,Math.hypot(dx,dy));
+  const kick=rnd(3,15);
+  p.vx+=dx/d*kick;
+  p.vy+=dy/d*kick-3;
+ }
+}
+function brush(){
+ if(!pointer||!pointer.down)return;
+ const mx=pointer.x,my=pointer.y,r=settings.brush;
+ if(tool==="pour"){
+  const a=settings.angle*Math.PI/180,mag=settings.velocity;
+  const mvx=clamp(pointer.dx*.16,-7,7),mvy=clamp(pointer.dy*.16,-7,7);
+  add(mx,my,settings.flow,Math.cos(a)*mag+mvx,-Math.sin(a)*mag+mvy);
+ }else if(tool==="stir"){
+  const force=settings.velocity*.11+1.9;
+  for(const p of particles){
+   let dx=p.x-mx,dy=p.y-my,d=Math.hypot(dx,dy);
+   if(d<r&&d>.01){
+    const falloff=(1-d/r),q=falloff*force;
+    p.vx+=(dx/d*q)+(pointer.dx*.08*falloff);
+    p.vy+=(dy/d*q)+(pointer.dy*.08*falloff);
+   }
+  }
+ }else if(tool==="erase"){
+  particles=particles.filter(p=>Math.hypot(p.x-mx,p.y-my)>r*.70);
+  walls=walls.filter(o=>distanceSegment(mx,my,o)>r*.63);
+ }else if(tool==="wall"){
+  if(!pointer.hasWall){walls.push({ax:mx,ay:my,bx:mx+.1,by:my+.1});pointer.hasWall=true}
+  if(Math.hypot(mx-pointer.lastWX,my-pointer.lastWY)>6){
+   walls.push({ax:pointer.lastWX,ay:pointer.lastWY,bx:mx,by:my});
+   if(walls.length>130)walls.splice(0,walls.length-130);
+   pointer.lastWX=mx;pointer.lastWY=my;
+  }
+ }
+ pointer.dx*=.52;pointer.dy*=.52;
+}
+function simulate(){
+ if(!paused){
+  brush();
+  if(rain&&Math.random()<.96)add(rnd(25,W-25),rnd(13,22),2,rnd(-1,1),rnd(0,3));
+  physics();
+ }
+}
+function worldPos(e){
+ const r=canvas.getBoundingClientRect();
+ return{x:clamp((e.clientX-r.left)/r.width*W,1,W-1),y:clamp((e.clientY-r.top)/r.height*H,1,H-1)};
+}
+canvas.addEventListener("pointerdown",e=>{
+ e.preventDefault();canvas.setPointerCapture(e.pointerId);
+ const p=worldPos(e);
+ pointer={id:e.pointerId,down:true,x:p.x,y:p.y,dx:0,dy:0,lastWX:p.x,lastWY:p.y,hasWall:false};
+ if(paused&&tool!=="wall")paused=false;
+ brush();
+});
+canvas.addEventListener("pointermove",e=>{
+ const p=worldPos(e);hover=p;
+ if(pointer&&e.pointerId===pointer.id){
+  pointer.dx+=p.x-pointer.x;pointer.dy+=p.y-pointer.y;
+  pointer.x=p.x;pointer.y=p.y;
+  if(tool==="wall")brush();
+ }
+});
+function stopPointer(e){if(pointer&&e.pointerId===pointer.id){pointer=null}}
+canvas.addEventListener("pointerup",stopPointer);
+canvas.addEventListener("pointercancel",stopPointer);
+canvas.addEventListener("lostpointercapture",stopPointer);
+canvas.addEventListener("pointerleave",()=>{if(!pointer)hover=null});
+function roundRect(x,y,w,h,r){
+ ctx.beginPath();ctx.roundRect(x,y,w,h,r);
+}
+function draw(){
+ const cx=canvas.width,cy=canvas.height;
+ ctx.setTransform(cx/W,0,0,cy/H,0,0);
+ const bg=ctx.createLinearGradient(0,0,W,H);
+ bg.addColorStop(0,"#13243b");bg.addColorStop(.5,"#0d1c30");bg.addColorStop(1,"#0c1628");
+ ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+ ctx.lineWidth=1;ctx.strokeStyle="#c3deff0a";ctx.beginPath();
+ for(let x=20;x<W;x+=40){ctx.moveTo(x,0);ctx.lineTo(x,H)}
+ for(let y=20;y<H;y+=40){ctx.moveTo(0,y);ctx.lineTo(W,y)}
+ ctx.stroke();
+ // Tank lighting and transparent glass edges.
+ const light=ctx.createRadialGradient(W*.48,H*.8,40,W*.48,H*.8,W*.69);
+ light.addColorStop(0,"#3986c20d");light.addColorStop(1,"#3986c200");
+ ctx.fillStyle=light;ctx.fillRect(0,0,W,H);
+ ctx.strokeStyle="#7fcaff1e";ctx.lineWidth=3;ctx.strokeRect(2,2,W-4,H-4);
+ for(const o of walls){
+  ctx.lineCap="round";ctx.strokeStyle="#a4c7ef26";ctx.lineWidth=28;ctx.beginPath();ctx.moveTo(o.ax,o.ay);ctx.lineTo(o.bx,o.by);ctx.stroke();
+  ctx.strokeStyle="#91a9c5";ctx.lineWidth=14;ctx.beginPath();ctx.moveTo(o.ax,o.ay);ctx.lineTo(o.bx,o.by);ctx.stroke();
+  ctx.strokeStyle="#e6f5ff";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(o.ax-1,o.ay-2);ctx.lineTo(o.bx-1,o.by-2);ctx.stroke();
+ }
+ const rgb=swatches[palette],col="rgba("+rgb.join(",")+",";
+ ctx.lineCap="round";
+ ctx.strokeStyle=col+".1)";ctx.lineWidth=7;ctx.beginPath();
+ for(const p of particles){
+  if(Math.hypot(p.vx,p.vy)>3){ctx.moveTo(p.x,p.y);ctx.lineTo(p.x-p.vx*.7,p.y-p.vy*.7)}
+ }
+ ctx.stroke();
+ ctx.globalCompositeOperation="screen";
+ for(const p of particles)ctx.drawImage(sprite,p.x-12,p.y-12,24,24);
+ ctx.globalCompositeOperation="source-over";
+ ctx.fillStyle=col+".86)";ctx.beginPath();
+ for(const p of particles){ctx.moveTo(p.x+R*.66,p.y);ctx.arc(p.x,p.y,R*.66,0,Math.PI*2)}
+ ctx.fill();
+ if(pointer&&pointer.down||hover&&tool!=="pour"){
+  const pos=pointer&&pointer.down?pointer:hover;
+  if(pos){
+   ctx.save();
+   ctx.setLineDash([6,5]);ctx.strokeStyle="#d4edff91";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(pos.x,pos.y,tool==="pour"?13:settings.brush,0,Math.PI*2);ctx.stroke();ctx.restore();
+  }
+ }
+ if(particles.length===0){
+  ctx.textAlign="center";ctx.font="700 23px system-ui";ctx.fillStyle="#a3cce2";ctx.fillText("Your tank is empty",W/2,H/2-10);
+  ctx.font="14px system-ui";ctx.fillStyle="#7298b8";ctx.fillText("Drag to pour · Or press Add water",W/2,H/2+20);
+ }
+}
+function updateStats(time){
+ ticks++;
+ if(time-fpsTime>=900){
+  fps=Math.round(ticks*1000/(time-fpsTime||1000));
+  ticks=0;fpsTime=time;
+  $("#fps").textContent=fps+" FPS";
+  $("#count").textContent=particles.length;
+ }
+}
+function frame(time){
+ if(!last)last=time;
+ let dt=Math.min((time-last)/1000,.06);last=time;
+ if(!paused){
+  remaining=Math.min(remaining+dt*settings.speed,.06);
+  let count=0;
+  while(remaining>=1/60&&count<3){simulate();remaining-=1/60;count++}
+ }else remaining=0;
+ draw();
+ updateStats(time);
+ requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+const formatter={
+ velocity:v=>(+v).toFixed(1),
+ angle:v=>Math.round(v)+"°",
+ gravity:v=>(+v).toFixed(2),
+ viscosity:v=>v+"%",
+ pressure:v=>v+"%",
+ bounce:v=>v+"%",
+ flow:v=>v,
+ brush:v=>v+"px",
+ speed:v=>(+v).toFixed(2).replace(/0$/,"")+"×"
+};
+function refresh(){
+ for(const k of Object.keys(settings)){
+  const el=$("#"+k);
+  el.value=settings[k];
+  $("#"+k+"-out").textContent=formatter[k](settings[k]);
+ }
+}
+for(const k of Object.keys(settings)){
+ $("#"+k).addEventListener("input",e=>{
+  settings[k]=Number(e.target.value);
+  $("#"+k+"-out").textContent=formatter[k](settings[k]);
+  document.querySelectorAll(".preset").forEach(b=>b.classList.remove("active"));
+ });
+}
+function setTool(next){
+ tool=next;document.querySelectorAll("[data-tool]").forEach(b=>b.classList.toggle("active",b.dataset.tool===next));
+ $("#toolhelp").textContent=help[next];
+ const messages={pour:"Drag anywhere to pour liquid",stir:"Drag to push the liquid around",wall:"Drag to create an obstacle",erase:"Drag to erase particles or walls"};
+ $("#tip").textContent=messages[next];
+}
+document.querySelectorAll("[data-tool]").forEach(b=>b.addEventListener("click",()=>setTool(b.dataset.tool)));
+const presets={
+ calm:{velocity:4,angle:45,gravity:.14,viscosity:65,pressure:38,bounce:9,flow:5,speed:1},
+ fall:{velocity:16,angle:270,gravity:.66,viscosity:12,pressure:75,bounce:18,flow:10,speed:1},
+ zero:{velocity:9,angle:90,gravity:0,viscosity:18,pressure:75,bounce:85,flow:8,speed:1},
+ chaos:{velocity:22,angle:225,gravity:1.05,viscosity:0,pressure:92,bounce:78,flow:14,speed:1.35}
+};
+document.querySelectorAll("[data-preset]").forEach(b=>b.addEventListener("click",()=>{
+ Object.assign(settings,presets[b.dataset.preset]);refresh();
+ document.querySelectorAll(".preset").forEach(e=>e.classList.toggle("active",e===b));
+}));
+document.querySelectorAll("[data-color]").forEach(b=>b.addEventListener("click",()=>{
+ palette=b.dataset.color;makeSprite();
+ document.querySelectorAll(".color").forEach(e=>e.classList.toggle("active",e===b));
+}));
+$("#fill").addEventListener("click",()=>{
+ if(particles.length>=LIMIT)return;
+ const n=Math.min(260,LIMIT-particles.length),cols=26;
+ for(let i=0;i<n;i++){
+  const x=clamp(220+(i%cols)*10+rnd(-1,1),R+5,W-R-5);
+  const y=clamp(110+Math.floor(i/cols)*10+rnd(-1,1),R+5,H-R-5);
+  add(x,y,1,rnd(-1,1),rnd(0,1.7));
+ }
+ $("#count").textContent=particles.length;
+});
+$("#rain").addEventListener("click",()=>{
+ rain=!rain;
+ $("#rain").textContent="🌧️ Rain: "+(rain?"ON":"OFF");
+ $("#rain").classList.toggle("active",rain);
+});
+$("#reverse").addEventListener("click",()=>{
+ flipped=!flipped;
+ $("#reverse").textContent=flipped?"↡ Normal gravity":"↟ Flip gravity";
+ $("#reverse").classList.toggle("active",flipped);
+});
+$("#shake").addEventListener("click",splash);
+$("#pause").addEventListener("click",()=>{
+ paused=!paused;$("#pause").textContent=paused?"▶ Resume":"⏸ Pause";
+ $("#pause").classList.toggle("active",paused);
+ $("#state").textContent=paused?"Ⅱ SIMULATION PAUSED":"● SIMULATION LIVE";
+});
+$("#clear").addEventListener("click",()=>{particles=[];walls=[];$("#count").textContent="0"});
+refresh();
+})();
+</script>
+</body></html>
