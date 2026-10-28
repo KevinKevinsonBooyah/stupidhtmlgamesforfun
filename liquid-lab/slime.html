@@ -104,7 +104,7 @@ html.embedded .controls{margin-top:9px}
 <script>
 (()=>{
 "use strict";
-const embedded=new URLSearchParams(window.location.search).get("embed")==="1";
+const embedded=/(?:^|[?&])embed=1(?:&|$)/.test(window.location.search);
 if(!embedded){window.location.replace("./#slime");return}
 document.documentElement.classList.add("embedded");
 const $=s=>document.querySelector(s), canvas=$("#slime"),g=canvas.getContext("2d",{alpha:false});
