@@ -97,7 +97,8 @@ const clamp=(a,b,c)=>Math.max(b,Math.min(c,a));
 const rand=(a,b)=>a+Math.random()*(b-a);
 const circle=(x,y,r,fill)=>{ctx.fillStyle=fill;ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill()};
 const keys=new Set(),joy={x:0,y:0,active:false,pointer:null},particles=[];
-let level=1,worldW=1000,worldH=650,walls=[],humans=[],allies=[],bullets=[],player=null,exit=null,cam={x:0,y:0},state="menu",dashReady=0,invuln=0,time=0,last=0,acc=0,screenShake=0,score=0;
+let level=1,worldW=1000,worldH=650,walls=[],humans=[],allies=[],bullets=[],decor=[],navGrid=null,navCols=0,navRows=0,player=null,exit=null,cam={x:0,y:0},state="menu",dashReady=0,invuln=0,time=0,last=0,acc=0,screenShake=0,score=0;
+const NAV=42;let alarms=0;
 const hud=()=>{$("#level").textContent=level;$("#remaining").textContent=humans.filter(h=>h.alive).length+" HUMANS";$("#health").textContent=player?player.hp:5;$("#hint").textContent=humans.some(h=>h.alive)?"· INFECT ALL":"· EXIT OPEN"};
 function particle(x,y,shade,n=12){
  for(let i=0;i<n;i++){let a=rand(0,TAU),v=rand(1.1,4);
@@ -125,31 +126,167 @@ function moveBody(o,dx,dy,r=13){
  else if(dy){for(const wall of walls){if(o.x>wall.x-r&&o.x<wall.x+wall.w+r&&o.y+dy+r>wall.y&&o.y+dy-r<wall.y+wall.h){o.y=dy>0?Math.min(o.y,wall.y-r):Math.max(o.y,wall.y+wall.h+r)}}}
  o.x=clamp(o.x,r+2,worldW-r-2);o.y=clamp(o.y,r+2,worldH-r-2);
 }
+function hasSight(ax,ay,bx,by){
+ const dx=bx-ax,dy=by-ay;
+ for(const o of walls){
+  // Slab intersection with a little clearance around lab benches.
+  const minX=o.x-5,maxX=o.x+o.w+5,minY=o.y-5,maxY=o.y+o.h+5;
+  let t0=0,t1=1;
+  const test=[[-dx,ax-minX],[dx,maxX-ax],[-dy,ay-minY],[dy,maxY-ay]];
+  let hit=true;
+  for(const [p,q] of test){
+   if(Math.abs(p)<.00001){if(q<0){hit=false;break}}
+   else{const r=q/p;if(p<0){if(r>t1){hit=false;break}if(r>t0)t0=r}else{if(r<t0){hit=false;break}if(r<t1)t1=r}}
+  }
+  if(hit)return false;
+ }
+ return true;
+}
+function makeNavigation(){
+ navCols=Math.ceil(worldW/NAV);navRows=Math.ceil(worldH/NAV);
+ navGrid=new Uint8Array(navCols*navRows);
+ for(let row=0;row<navRows;row++)for(let col=0;col<navCols;col++){
+  const x=Math.min(worldW-20,(col+.5)*NAV),y=Math.min(worldH-20,(row+.5)*NAV);
+  if(pointBlocked(x,y,15))navGrid[row*navCols+col]=1;
+ }
+}
+function locateCell(x,y){
+ return clamp(Math.floor(y/NAV),0,navRows-1)*navCols+clamp(Math.floor(x/NAV),0,navCols-1);
+}
+function closestFreeCell(x,y){
+ const at=locateCell(x,y);
+ if(!navGrid[at])return at;
+ let best=-1,dist=Infinity;
+ const col=at%navCols,row=(at-col)/navCols;
+ for(let ry=Math.max(0,row-4);ry<=Math.min(navRows-1,row+4);ry++)
+ for(let cx=Math.max(0,col-4);cx<=Math.min(navCols-1,col+4);cx++){
+  const key=ry*navCols+cx;
+  if(navGrid[key])continue;
+  const d=(cx-col)*(cx-col)+(ry-row)*(ry-row);
+  if(d<dist){best=key;dist=d}
+ }
+ return best;
+}
+function route(sx,sy,gx,gy){
+ if(!navGrid)return[];
+ const start=closestFreeCell(sx,sy),goal=closestFreeCell(gx,gy);
+ if(start<0||goal<0||start===goal)return[{x:gx,y:gy}];
+ const n=navGrid.length,parent=new Int32Array(n);parent.fill(-1);
+ const seen=new Uint8Array(n),queue=new Int32Array(n);
+ let head=0,tail=0;queue[tail++]=start;seen[start]=1;
+ while(head<tail){
+  const k=queue[head++];if(k===goal)break;
+  const col=k%navCols,row=(k-col)/navCols;
+  const ns=[col>0?k-1:-1,col+1<navCols?k+1:-1,row>0?k-navCols:-1,row+1<navRows?k+navCols:-1];
+  for(const v of ns){if(v<0||navGrid[v]||seen[v])continue;seen[v]=1;parent[v]=k;queue[tail++]=v}
+ }
+ if(!seen[goal])return[];
+ const cells=[];let v=goal;
+ for(let steps=0;v!==start&&steps<n;steps++){cells.push(v);v=parent[v];if(v<0)return[]}
+ cells.reverse();
+ const result=[];
+ let previous=0;
+ for(let i=0;i<cells.length;i++){
+  const cur=cells[i],next=cells[i+1],dc=next===undefined?0:next-cur;
+  if(i===cells.length-1||dc!==previous&&i>0){
+   const row=Math.floor(cur/navCols),col=cur%navCols;
+   result.push({x:(col+.5)*NAV,y:(row+.5)*NAV});
+  }
+  previous=dc;
+ }
+ result.push({x:gx,y:gy});
+ return result;
+}
+function nearestThreat(h){
+ let near=player,dist=Math.hypot(h.x-player.x,h.y-player.y);
+ for(const a of allies){
+  const d=Math.hypot(h.x-a.x,h.y-a.y);
+  if(d<dist){dist=d;near=a}
+ }
+ return{near,dist};
+}
+function chooseEscape(h,threat,guard){
+ let best=null,bestScore=-1e20;
+ for(let j=0;j<15;j++){
+  const x=clamp(h.x+rand(-350,350),57,worldW-57),y=clamp(h.y+rand(-310,310),57,worldH-57);
+  if(pointBlocked(x,y,20))continue;
+  const d=Math.hypot(x-threat.x,y-threat.y);
+  const travel=Math.hypot(x-h.x,y-h.y);
+  const shelter=hasSight(x,y,threat.x,threat.y)?0:guard?22:145;
+  const wallPenalty=Math.min(x,worldW-x,y,worldH-y)<70?110:0;
+  const danger=allies.reduce((sum,a)=>sum+Math.max(0,120-Math.hypot(x-a.x,y-a.y)),0);
+  const score=guard?-Math.abs(d-235)*1.6+shelter-travel*.14-danger*.9:d+shelter-travel*.18-wallPenalty-danger;
+  if(score>bestScore){bestScore=score;best={x,y}}
+ }
+ return best||{x:clamp(h.x+rand(-150,150),40,worldW-40),y:clamp(h.y+rand(-150,150),40,worldH-40)};
+}
+function navigate(entity,destination,speed){
+ if(!destination)return false;
+ let wp=entity.path&&entity.path[0]||destination;
+ if(Math.hypot(entity.x-wp.x,entity.y-wp.y)<21&&entity.path?.length>0){entity.path.shift();wp=entity.path[0]||destination}
+ let dx=wp.x-entity.x,dy=wp.y-entity.y,d=Math.hypot(dx,dy)||1;
+ let vx=dx/d,vy=dy/d;
+ // Three forward probes gently bias agents around obstacles rather than jittering into them.
+ for(let attempt=0;attempt<3;attempt++){
+  if(!pointBlocked(entity.x+vx*32,entity.y+vy*32,entity.r+2))break;
+  const sign=attempt%2?1:-1;
+  const turn=sign*.58;
+  const nx=vx*Math.cos(turn)-vy*Math.sin(turn),ny=vx*Math.sin(turn)+vy*Math.cos(turn);
+  vx=nx;vy=ny;
+ }
+ const ox=entity.x,oy=entity.y;
+ moveBody(entity,vx*speed,vy*speed,entity.r);
+ entity.dir=Math.atan2(vy,vx);
+ const moved=Math.hypot(entity.x-ox,entity.y-oy);
+ entity.stuck=(moved<.18?(entity.stuck||0)+1:0);
+ if(entity.stuck>12){entity.path=[];entity.repath=0;entity.stuck=0}
+ return moved>.18;
+}
 function newLevel(n){
  level=n;worldW=990+(n-1)*155;worldH=635+(n-1)*115;
- walls=[];humans=[];allies=[];bullets=[];particles.length=0;screenShake=0;invuln=60;dashReady=0;
- player={x:77,y:worldH*.5,r:16,hp:5,maxHp:5,face:0};
+ walls=[];decor=[];humans=[];allies=[];bullets=[];particles.length=0;
+ screenShake=0;invuln=70;dashReady=0;alarms=0;
+ player={x:77,y:worldH*.5,r:16,hp:5,maxHp:5,face:0,vx:0,vy:0};
  exit={x:worldW-63,y:worldH*.5,w:38,h:93};
- // Scientists left lab benches and glass observation rooms in each larger level.
- const columns=Math.max(3,Math.ceil(worldW/210));
- const rows=Math.max(2,Math.ceil(worldH/170));
+ const columns=Math.ceil(worldW/190),rows=Math.ceil(worldH/154);
  for(let yy=0;yy<rows;yy++)for(let xx=0;xx<columns;xx++){
-  if(xx===0||xx===columns-1&&yy===Math.floor(rows/2))continue;
-  if((xx+yy)%3===1){
-   const x=195+xx*169,y=110+yy*152;
-   if(x+104<worldW-100&&y+62<worldH-55)walls.push({x,y,w:rand(66,102),h:rand(26,48),kind:(xx+yy)%2});
-  }else if((xx+yy)%5===2){
-   const x=230+xx*169,y=84+yy*152;
-   if(x+35<worldW-110&&y+110<worldH-75)walls.push({x,y,w:24,h:rand(68,110),kind:2});
+  const x=185+xx*168,y=74+yy*141;
+  if(x+130>=worldW-100||y+116>=worldH-38)continue;
+  if((xx+yy*3)%4===0){
+   // Glass containment chambers
+   walls.push({x,y,w:94,h:30,kind:2});
+   decor.push({x:x+47,y:y+66,kind:"tank",r:31});
+  }else if((xx*5+yy)%3===0){
+   // Scientific benches, actual obstacles
+   walls.push({x,y:y+23,w:108,h:29,kind:0});
+   decor.push({x:x+36,y:y+37,kind:"beaker"});
+  }else if((xx+yy)%5===0){
+   walls.push({x:x+42,y,w:25,h:95,kind:1});
+   decor.push({x:x+68,y:y+37,kind:"console"});
+  }else{
+   decor.push({x:x+50,y:y+50,kind:(xx+yy)%2?"tile":"lamp"});
   }
  }
- for(let k=0;k<3+level*2;k++){
-  const pt=relocate(worldW*.53+rand(-150,150),worldH*.4+rand(-190,190));
-  if(Math.hypot(pt.x-player.x,pt.y-player.y)<150)continue;
-  const guard=level>=3&&k<Math.min(level-2,Math.floor((3+level*2)/3)+1);
-  humans.push({x:pt.x,y:pt.y,vx:0,vy:0,guard,alive:true,panic:0,dir:rand(0,TAU),turn:rand(40,110),shot:rand(45,100),hp:guard?2:1,r:14});
+ for(let i=0;i<Math.ceil(worldW/270);i++){
+  decor.push({x:115+i*270,y:47,kind:"sign"});
+  decor.push({x:115+i*270,y:worldH-49,kind:"light"});
  }
- if(humans.length===0)humans.push({...relocate(worldW*.6,worldH*.5),vx:0,vy:0,guard:false,alive:true,panic:0,dir:0,turn:100,shot:120,hp:1,r:14});
+ for(let i=0;i<Math.ceil(worldH/270);i++){
+  decor.push({x:32,y:120+i*270,kind:"light"});
+  decor.push({x:worldW-34,y:120+i*270,kind:"light"});
+ }
+ makeNavigation();
+ const count=Math.min(22,3+level*2);
+ for(let k=0;k<count;k++){
+  const pt=relocate(worldW*.52+rand(-120,140),worldH*.45+rand(-170,170));
+  if(Math.hypot(pt.x-player.x,pt.y-player.y)<155)continue;
+  const guard=level>=3&&k<Math.min(6,1+Math.floor((level-3)*.65));
+  humans.push({x:pt.x,y:pt.y,guard,alive:true,panic:0,alert:0,dir:rand(0,TAU),
+   turn:rand(40,110),shot:rand(35,90),hp:guard?3:1,r:14,path:[],goal:null,
+   repath:rand(0,35),stuck:0,strafe:k%2?1:-1,cohort:k%3,type:k%3,
+   lastX:pt.x,lastY:pt.y});
+ }
+ if(!humans.length)humans.push({x:worldW*.6,y:worldH*.5,guard:false,alive:true,panic:0,dir:0,turn:0,shot:60,hp:1,r:14,path:[],goal:null,repath:0,stuck:0,cohort:0,type:0});
  hud();cam.x=0;cam.y=0;
 }
 function overlay(icon,title,desc,button){
@@ -199,7 +336,7 @@ function input(){
 function infected(h){
  h.alive=false;score+=h.guard?30:10;
  particle(h.x,h.y,"#aaffaa",20);
- allies.push({x:h.x,y:h.y,vx:0,vy:0,face:0,r:13});
+ allies.push({x:h.x,y:h.y,vx:0,vy:0,face:0,dir:0,r:13,path:[],goal:null,repath:0,stuck:0});
  hud();
 }
 function hurt(){
@@ -210,36 +347,89 @@ function hurt(){
 function update(){
  if(state!=="running")return;
  time++;if(dashReady>0)dashReady--;if(invuln>0)invuln--;if(screenShake>0)screenShake*=.84;
- const v=input(),speed=3.3;
+ const v=input(),speed=3.3,oldX=player.x,oldY=player.y;
  moveBody(player,v.x*speed,v.y*speed,player.r);
+ player.vx=player.x-oldX;player.vy=player.y-oldY;
  if(v.len>.12)player.face=Math.atan2(v.y,v.x);
- // Players and infected allies infect by touching their targets.
  for(const h of humans){
   if(!h.alive)continue;
-  if(Math.hypot(player.x-h.x,player.y-h.y)<player.r+h.r+3){h.hp--;if(h.hp<=0)infected(h);else particle(h.x,h.y,"#f5ce89",6)}
-  if(!h.alive)continue;
-  let threat=player,nearest=Math.hypot(h.x-player.x,h.y-player.y);
-  for(const ally of allies){const d=Math.hypot(h.x-ally.x,h.y-ally.y);if(d<nearest){nearest=d;threat=ally}}
-  if(nearest<220){h.panic=100;const a=Math.atan2(h.y-threat.y,h.x-threat.x);h.dir=a+(Math.sin(time*.035+h.x)*.3)}
-  if(h.guard&&nearest<330){
-   const angle=Math.atan2(player.y-h.y,player.x-h.x),desired=clamp(angle,-Math.PI,Math.PI);
-   h.dir=desired;h.shot--;
-   if(h.shot<=0){h.shot=Math.max(27,104-level*5);const dx=player.x-h.x,dy=player.y-h.y,dist=Math.hypot(dx,dy)||1;bullets.push({x:h.x,y:h.y,vx:dx/dist*6.4,vy:dy/dist*6.4,life:110});particle(h.x,h.y,"#ffcf83",5)}
-  }else{h.turn--;if(h.turn<=0&&h.panic<=0){h.dir+=rand(-2.8,2.8);h.turn=rand(35,110)}}
-  h.panic=Math.max(0,h.panic-1);
-  const pace=h.guard?1.05:h.panic?1.95+level*.07:.64;
-  const oldX=h.x,oldY=h.y;
-  moveBody(h,Math.cos(h.dir)*pace,Math.sin(h.dir)*pace,h.r);
-  if(Math.hypot(oldX-h.x,oldY-h.y)<.15){h.turn=0;h.dir+=Math.PI*.77}
+  const dPlayer=Math.hypot(player.x-h.x,player.y-h.y);
+  if(dPlayer<player.r+h.r+3){h.hp--;if(h.hp<=0){infected(h);continue}else particle(h.x,h.y,"#f5ce89",6)}
+  const target=nearestThreat(h),near=target.near,d=target.dist;
+  const visible=d<350&&hasSight(h.x,h.y,near.x,near.y);
+  const heard=d<190;
+  if(visible||heard){
+   h.panic=h.guard?75:170;
+   h.alert=90;
+   // A panicking scientist alerts nearby colleagues instead of fleeing alone.
+   if(time%25===h.cohort){
+    for(const other of humans){
+     if(other.alive&&!other.guard&&Math.hypot(h.x-other.x,h.y-other.y)<240)other.panic=Math.max(other.panic,105);
+    }
+   }
+  }
+  const danger=h.panic>0||d<210;
+  h.panic=Math.max(0,h.panic-1);h.alert=Math.max(0,h.alert-1);
+  h.repath--;
+  if(h.repath<=0||!h.path?.length){
+   if(danger||h.guard&&d<390){
+    h.goal=chooseEscape(h,near,h.guard);
+    h.repath=h.guard?32+rand(0,14):46+rand(0,25);
+   }else{
+    const x=clamp(h.x+rand(-170,170),40,worldW-40),y=clamp(h.y+rand(-150,150),40,worldH-40);
+    h.goal=pointBlocked(x,y,19)?{x:h.x,y:h.y}:{x,y};
+    h.repath=80+rand(0,75);
+   }
+   h.path=route(h.x,h.y,h.goal.x,h.goal.y);
+  }
+  // Guard squads kite zombies, strafe, and only fire with clear shots.
+  if(h.guard){
+   const gunTarget=dPlayer<370?player:near;
+   const dx=gunTarget.x-h.x,dy=gunTarget.y-h.y,dist=Math.hypot(dx,dy)||1;
+   const los=dist<425&&hasSight(h.x,h.y,gunTarget.x,gunTarget.y);
+   h.dir=Math.atan2(dy,dx);
+   h.shot--;
+   if(los&&h.shot<=0){
+    h.shot=Math.max(35,115-level*6)+rand(0,15);
+    const aimX=gunTarget.x+(gunTarget.vx||0)*Math.min(15,dist/42);
+    const aimY=gunTarget.y+(gunTarget.vy||0)*Math.min(15,dist/42);
+    const ax=aimX-h.x,ay=aimY-h.y,len=Math.hypot(ax,ay)||1;
+    bullets.push({x:h.x+ax/len*15,y:h.y+ay/len*15,vx:ax/len*6.7,vy:ay/len*6.7,life:110});
+    particle(h.x,h.y,"#ffd0a0",6);
+   }
+   if(d<160||!los){navigate(h,h.goal,d<160?1.65:1.1)}
+   else if(d<320){
+    const strafeX=-dy/dist*h.strafe,strafeY=dx/dist*h.strafe;
+    if(!pointBlocked(h.x+strafeX*27,h.y+strafeY*27,h.r+2)){moveBody(h,strafeX*.78,strafeY*.78,h.r)}
+    else h.strafe*=-1;
+   }else navigate(h,h.goal,.9);
+  }else{
+   const pace=danger?Math.min(3.1,1.9+level*.13):.8;
+   navigate(h,h.goal,pace);
+   // Nearby colleagues spread out instead of piling into one spot.
+   if(time%2===h.cohort%2){
+    for(const other of humans){
+     if(other===h||!other.alive)continue;
+     const dx=h.x-other.x,dy=h.y-other.y,len=Math.hypot(dx,dy);
+     if(len>1&&len<29)moveBody(h,dx/len*.5,dy/len*.5,h.r);
+    }
+   }
+  }
  }
  for(const ally of allies){
   let nearest=null,best=Infinity;
   for(const h of humans){if(!h.alive)continue;const d=Math.hypot(ally.x-h.x,ally.y-h.y);if(d<best){nearest=h;best=d}}
   if(!nearest)continue;
-  const a=Math.atan2(nearest.y-ally.y,nearest.x-ally.x);
-  ally.face=a;
-  moveBody(ally,Math.cos(a)*2,Math.sin(a)*2,ally.r);
-  if(best<ally.r+nearest.r+3){nearest.hp--;if(nearest.hp<=0)infected(nearest)}
+  if((ally.repath||0)<=0||!ally.path?.length){
+   ally.goal={x:nearest.x,y:nearest.y};
+   ally.path=route(ally.x,ally.y,nearest.x,nearest.y);
+   ally.repath=44+rand(0,35);
+  }
+  ally.repath--;
+  ally.face=Math.atan2(nearest.y-ally.y,nearest.x-ally.x);
+  if(hasSight(ally.x,ally.y,nearest.x,nearest.y))navigate(ally,nearest,2.35);
+  else navigate(ally,ally.goal,2.05);
+  if(Math.hypot(ally.x-nearest.x,ally.y-nearest.y)<ally.r+nearest.r+4){nearest.hp--;if(nearest.hp<=0)infected(nearest)}
  }
  for(let i=bullets.length-1;i>=0;i--){
   const b=bullets[i];b.x+=b.vx;b.y+=b.vy;b.life--;
@@ -252,7 +442,7 @@ function update(){
  }
  if(!humans.some(h=>h.alive)&&Math.abs(player.x-exit.x)<55&&Math.abs(player.y-exit.y)<71){
   state="next";particle(player.x,player.y,"#b1f4d2",35);
-  overlay("🧪","LEVEL "+level+" CLEARED!","All humans infected. The next lab is bigger and more heavily defended.","NEXT LEVEL →");
+  overlay("🧪","LEVEL "+level+" CLEARED!","The next facility is larger and has smarter defenders.","NEXT LEVEL →");
  }
  cam.x=clamp(player.x-VW/2,0,Math.max(0,worldW-VW));
  cam.y=clamp(player.y-VH/2,0,Math.max(0,worldH-VH));
