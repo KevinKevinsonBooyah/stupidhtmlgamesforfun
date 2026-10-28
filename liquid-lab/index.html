@@ -96,6 +96,52 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 @media(max-width:970px){.workspace{grid-template-columns:minmax(0,1fr)}.side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.settings{grid-column:1/-1}.slider-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:22px}.palette-panel{grid-column:auto}}
 @media(max-width:600px){.page{padding:12px 12px 24px}.hero{margin-bottom:13px}.stage{border-radius:16px}.stage-top{top:8px;left:8px;right:8px}.stage-tag{font-size:10px;padding:6px 7px}.stage canvas{aspect-ratio:760/570}.stage-tip{font-size:10px;padding:6px 9px;bottom:9px}.actionbar{gap:6px}.action{padding:10px;flex:1 0 auto;font-size:11px}.action.warn{margin-left:0}.side{display:flex;gap:10px}.panel{padding:13px}.slider-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:17px}.control-label{font-size:11px}.control{margin-bottom:16px}.tools{grid-template-columns:repeat(5,minmax(0,1fr))}.tool{font-size:10px;padding:9px 2px}.subtitle{font-size:12px}.colors{grid-template-columns:repeat(4,1fr)}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+
+.physics-summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;font-size:13px;font-weight:850;color:#e7f4ff}
+.physics-summary::-webkit-details-marker{display:none}
+.physics-summary span{color:#a1bad1;font-weight:600;font-size:11px}
+.physics-body{margin-top:13px;border-top:1px solid #375169;padding-top:15px}
+@media(max-width:600px){
+ .page{padding:10px 10px calc(20px + env(safe-area-inset-bottom))}
+ header{margin-bottom:10px}
+ .home{font-size:10px;letter-spacing:.035em}
+ .head-right{gap:5px}
+ .head-right .pill{font-size:9px;padding:5px 7px}
+ .hero{margin-bottom:10px}
+ .hero .eyebrow{display:none}
+ .hero h1{font-size:31px;margin-bottom:4px}
+ .hero .subtitle{font-size:11px;line-height:1.4;max-width:340px}
+ .mode-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:5px;gap:4px;margin-bottom:11px}
+ .mode-tab{min-width:0;padding:8px 4px;min-height:42px;font-size:10px;line-height:1.15;text-align:center}
+ .mode-tab .num{font-size:8px;padding:2px 3px}
+ .mobile-mode{display:flex;margin-left:0}
+ .workspace{display:flex;flex-direction:column;gap:9px}
+ .stage-shell,.side{display:contents}
+ .stage{order:0;border-radius:15px}
+ .stage canvas{aspect-ratio:760/655}
+ .stage-tip{font-size:10px;max-width:95%;white-space:normal;text-align:center}
+ .side>.panel:first-child{order:1}
+ .actionbar{order:2;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0}
+ .action{width:100%;min-width:0;min-height:43px;font-size:10px;white-space:normal;line-height:1.2;padding:8px 4px;border-radius:10px}
+ #clear{grid-column:span 3;background:#372734;border-color:#775165}
+ .palette-panel{order:3}
+ .settings{order:4}
+ .side>.panel{margin:0}
+ .panel{border-radius:13px;padding:12px}
+ .panel h2{font-size:11px;margin-bottom:9px}
+ .panel-note{display:none}
+ .tools{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+ .tool{font-size:10px;min-height:43px;border-radius:10px;padding:7px 2px;line-height:1.15}
+ .settings .physics-summary{padding:2px 1px;font-size:12px}
+ .settings .physics-body{margin-top:10px;padding-top:12px}
+ .settings .slider-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}
+ .control-label{font-size:10px}
+ .control-label output{font-size:10px}
+ .control{margin-bottom:14px}
+ .templates-view{padding:13px}
+ .templates-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .template-card{min-height:100px}
+}
 </style>
 </head>
 <body>
@@ -143,7 +189,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 <button class="tool" data-tool="wall">🪨 Wall</button>
 <button class="tool" data-tool="erase">🧽 Erase</button>
 </div><p class="panel-note" id="toolhelp">Drag over the tank to release liquid. Use Grab to lift, stretch, and drop it. On slower phones, choose Fast quality.</p></section>
-<section class="panel settings"><h2>02 / Fluid physics</h2><div class="slider-grid">
+<details class="panel settings" id="physics-panel" open><summary class="physics-summary">⚙️ Fluid physics <span>9 controls</span></summary><div class="physics-body"><div class="slider-grid">
 <div class="control"><div class="control-label"><label for="velocity">Launch velocity</label><output id="velocity-out">9.0</output></div><input id="velocity" type="range" min="0" max="25" step=".5" value="9"></div>
 <div class="control"><div class="control-label"><label for="angle">Launch direction</label><output id="angle-out">45°</output></div><input id="angle" type="range" min="0" max="360" step="5" value="45"></div>
 <div class="control"><div class="control-label"><label for="gravity">Gravity</label><output id="gravity-out">0.32</output></div><input id="gravity" type="range" min="0" max="1.4" step=".02" value=".32"></div>
@@ -153,7 +199,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 <div class="control"><div class="control-label"><label for="flow">Pour amount</label><output id="flow-out">7</output></div><input id="flow" type="range" min="1" max="14" step="1" value="7"></div>
 <div class="control"><div class="control-label"><label for="brush">Brush size</label><output id="brush-out">50px</output></div><input id="brush" type="range" min="16" max="110" step="2" value="50"></div>
 <div class="control"><div class="control-label"><label for="speed">Time speed</label><output id="speed-out">1.0×</output></div><input id="speed" type="range" min=".25" max="2" step=".05" value="1"></div>
-</div><div class="reset-options"><button class="reset-settings" id="reset-settings">↺ Reset settings</button></div></section>
+</div><div class="reset-options"><button class="reset-settings" id="reset-settings">↺ Reset settings</button></div></div></details>
 <section class="panel palette-panel"><h2>03 / Liquid color</h2><div class="colors"><button class="color active" data-color="ocean" aria-label="Ocean blue" title="Ocean blue" style="--swatch:#6bcaff"><i></i></button><button class="color" data-color="mint" aria-label="Mint green" title="Mint green" style="--swatch:#6ff5c0"><i></i></button><button class="color" data-color="purple" aria-label="Plasma purple" title="Plasma purple" style="--swatch:#b799ff"><i></i></button><button class="color" data-color="lava" aria-label="Lava orange" title="Lava orange" style="--swatch:#ff986b"><i></i></button></div><p class="panel-note">Try drawing walls, then turn gravity upside down. The particles flow around your creations.</p></section>
 </div></div>
 <div class="footer">HTML GAME CENTER · No installation needed · Touch and mouse supported</div>
@@ -746,6 +792,7 @@ $("#reset-settings").addEventListener("click",()=>{
 });
 $("#clear").addEventListener("click",()=>{particles=[];walls=[];rebuildWallBuckets();liquidDirty=true;$("#count").textContent="0"});
 refresh();
+if(window.matchMedia&&window.matchMedia("(max-width:600px)").matches)$("#physics-panel").open=false;
 })();
 </script>
 </body></html>
