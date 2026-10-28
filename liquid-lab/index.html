@@ -160,6 +160,14 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 @media(max-width:600px){
  .mode-nav{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+/* Keep gameplay taps and mouse drags from selecting labels or images. */
+html,body,body *,body *::before,body *::after{
+ -webkit-user-select:none!important;user-select:none!important;
+ -webkit-touch-callout:none;
+ -webkit-tap-highlight-color:transparent;
+}
+img,svg{ -webkit-user-drag:none;user-drag:none; }
 </style>
 </head>
 <body>
