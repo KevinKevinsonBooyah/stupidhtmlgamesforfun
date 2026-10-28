@@ -142,19 +142,35 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
  .templates-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
  .template-card{min-height:100px}
 }
+
+.slime-view{max-width:710px;margin:0 auto}
+.slime-view iframe{display:block;border:0;width:100%;height:960px;background:transparent;border-radius:16px}
+.hero{margin-bottom:12px}.hero h1{font-size:clamp(28px,3.5vw,39px);margin:0}
+.mode-nav{margin-bottom:12px}
+.templates-head{margin-bottom:13px}.templates-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.template-card{min-height:100px}.template-card .emoji{font-size:20px}
+@media(max-width:600px){
+ .page{padding:10px 10px calc(12px + env(safe-area-inset-bottom))}
+ header{margin-bottom:9px}.hero{margin-bottom:8px}.hero h1{font-size:29px}
+ .mode-nav{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:9px}
+ .mode-tab{min-height:39px}.slime-view{margin:0 -1px}
+ .slime-view iframe{border-radius:14px;min-height:480px}
+ .templates-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .template-card small{font-size:10px}
+}
 </style>
 </head>
 <body>
 <div class="page">
-<header><a class="home" href="../HTML%20GAME%20CENTER/">← &nbsp; 🎮 HTML GAME CENTER</a><div class="head-right"><span class="pill live">LIVE PHYSICS</span><span class="pill" id="fps">60 FPS</span></div></header>
-<section class="hero"><p class="eyebrow">DIGITAL SANDBOX / EXPERIMENT 001</p><h1>Liquid <span>Lab.</span> 💧</h1><p class="subtitle">Grab a handful of water, lift it, stretch it, and watch it flow back together. Bend gravity and customize the physics.</p></section>
+<header><a class="home" href="../HTML%20GAME%20CENTER/">← GAME CENTER</a></header>
+<section class="hero"><h1>Liquid <span>Lab.</span> 💧</h1></section>
 <nav class="mode-nav" aria-label="Liquid Lab modes">
 <button type="button" class="mode-tab active" id="nav-sim" aria-pressed="true">💧 Simulator</button>
-<button type="button" class="mode-tab" id="nav-templates" aria-pressed="false">🧪 Templates <span class="num">9</span></button>
-<a class="mode-tab mobile-mode" id="nav-slime" href="./slime.html">🟢 Slime Mode <span class="num">2 TOUCH</span></a>
+<button type="button" class="mode-tab" id="nav-templates" aria-pressed="false">🧪 Templates</button>
+<button type="button" class="mode-tab mobile-mode" id="nav-slime" aria-pressed="false">🟢 Slime</button>
 </nav>
 <section id="templates-view" class="templates-view" hidden>
- <div class="templates-head"><div><h2>Choose a template</h2><p>Ready-made physics recipes. Tap one to apply it to your water.</p></div><span class="pill">9 EXPERIMENTS</span></div>
+ <div class="templates-head"><h2>Templates</h2></div>
  <div class="templates-grid">
  <button class="template-card preset" data-preset="calm"><span class="emoji">🌊</span><strong>Calm Pool</strong><small>Relaxed waves, smooth and gentle</small></button>
  <button class="template-card preset" data-preset="fall"><span class="emoji">💦</span><strong>Waterfall</strong><small>Fast-moving flowing water</small></button>
@@ -166,11 +182,10 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
  <button class="template-card preset" data-preset="jelly"><span class="emoji">🟣</span><strong>Jelly</strong><small>Elastic, sticky and wobbly</small></button>
  <button class="template-card preset" data-preset="slow"><span class="emoji">🐌</span><strong>Slow Motion</strong><small>Chilled-out liquid physics</small></button>
  </div>
- <p class="template-footer">Change the sliders afterward to customize any template.</p>
 </section>
 <div class="workspace" id="sim-workspace">
 <div class="stage-shell">
-<div class="stage"><canvas id="fluid" aria-label="Interactive liquid simulation"></canvas><div class="stage-top"><div class="stage-tag">💧 <strong id="count">0</strong> PARTICLES</div><div class="stage-tag" id="state">● SIMULATION LIVE</div></div><div class="stage-tip" id="tip">Drag to pour · Select Grab to lift the water</div></div>
+<div class="stage"><canvas id="fluid" aria-label="Interactive liquid simulation"></canvas><div class="stage-top"><div class="stage-tag">💧 <strong id="count">0</strong></div><span id="state" hidden>● SIMULATION LIVE</span></div><div class="stage-tip" id="tip">Drag to pour · Select Grab to lift the water</div></div>
 <div class="actionbar">
 <button class="action primary" id="fill">💧 Add water</button>
 <button class="action" id="rain">🌧️ Rain: OFF</button>
@@ -182,14 +197,14 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 </div>
 </div>
 <div class="side">
-<section class="panel"><h2>01 / Interaction</h2><div class="tools">
+<section class="panel"><h2>Tools</h2><div class="tools">
 <button class="tool active" data-tool="pour">💧 Pour</button>
 <button class="tool" data-tool="grab">✋ Grab</button>
 <button class="tool" data-tool="stir">🌀 Push</button>
 <button class="tool" data-tool="wall">🪨 Wall</button>
 <button class="tool" data-tool="erase">🧽 Erase</button>
-</div><p class="panel-note" id="toolhelp">Drag over the tank to release liquid. Use Grab to lift, stretch, and drop it. On slower phones, choose Fast quality.</p></section>
-<details class="panel settings" id="physics-panel" open><summary class="physics-summary">⚙️ Fluid physics <span>9 controls</span></summary><div class="physics-body"><div class="slider-grid">
+</div><span id="toolhelp" hidden></span></section>
+<details class="panel settings" id="physics-panel" open><summary class="physics-summary">⚙️ Physics <span>Adjust</span></summary><div class="physics-body"><div class="slider-grid">
 <div class="control"><div class="control-label"><label for="velocity">Launch velocity</label><output id="velocity-out">9.0</output></div><input id="velocity" type="range" min="0" max="25" step=".5" value="9"></div>
 <div class="control"><div class="control-label"><label for="angle">Launch direction</label><output id="angle-out">45°</output></div><input id="angle" type="range" min="0" max="360" step="5" value="45"></div>
 <div class="control"><div class="control-label"><label for="gravity">Gravity</label><output id="gravity-out">0.32</output></div><input id="gravity" type="range" min="0" max="1.4" step=".02" value=".32"></div>
@@ -200,9 +215,11 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 <div class="control"><div class="control-label"><label for="brush">Brush size</label><output id="brush-out">50px</output></div><input id="brush" type="range" min="16" max="110" step="2" value="50"></div>
 <div class="control"><div class="control-label"><label for="speed">Time speed</label><output id="speed-out">1.0×</output></div><input id="speed" type="range" min=".25" max="2" step=".05" value="1"></div>
 </div><div class="reset-options"><button class="reset-settings" id="reset-settings">↺ Reset settings</button></div></div></details>
-<section class="panel palette-panel"><h2>03 / Liquid color</h2><div class="colors"><button class="color active" data-color="ocean" aria-label="Ocean blue" title="Ocean blue" style="--swatch:#6bcaff"><i></i></button><button class="color" data-color="mint" aria-label="Mint green" title="Mint green" style="--swatch:#6ff5c0"><i></i></button><button class="color" data-color="purple" aria-label="Plasma purple" title="Plasma purple" style="--swatch:#b799ff"><i></i></button><button class="color" data-color="lava" aria-label="Lava orange" title="Lava orange" style="--swatch:#ff986b"><i></i></button></div><p class="panel-note">Try drawing walls, then turn gravity upside down. The particles flow around your creations.</p></section>
+<section class="panel palette-panel"><h2>Color</h2><div class="colors"><button class="color active" data-color="ocean" aria-label="Ocean blue" title="Ocean blue" style="--swatch:#6bcaff"><i></i></button><button class="color" data-color="mint" aria-label="Mint green" title="Mint green" style="--swatch:#6ff5c0"><i></i></button><button class="color" data-color="purple" aria-label="Plasma purple" title="Plasma purple" style="--swatch:#b799ff"><i></i></button><button class="color" data-color="lava" aria-label="Lava orange" title="Lava orange" style="--swatch:#ff986b"><i></i></button></div></section>
 </div></div>
-<div class="footer">HTML GAME CENTER · No installation needed · Touch and mouse supported</div>
+<section id="slime-view" class="slime-view" hidden aria-label="Slime Mode">
+ <iframe id="slime-frame" title="Slime Mode" loading="lazy"></iframe>
+</section>
 </div>
 <script>
 (() => {
@@ -650,13 +667,7 @@ function draw(time){
  }
 }
 function updateStats(time){
- ticks++;
- if(time-fpsTime>=900){
-  fps=Math.round(ticks*1000/(time-fpsTime||1000));
-  ticks=0;fpsTime=time;
-  $("#fps").textContent=fps+" FPS";
-  $("#count").textContent=particles.length;
- }
+ if(time-fpsTime>=700){fpsTime=time;$("#count").textContent=particles.length}
 }
 function frame(time){
  if(!last)last=time;
@@ -720,18 +731,41 @@ const presets={
  jelly:{velocity:5,angle:110,gravity:.24,viscosity:94,pressure:100,bounce:78,flow:6,brush:55,speed:1},
  slow:{velocity:9,angle:45,gravity:.26,viscosity:39,pressure:67,bounce:19,flow:7,brush:50,speed:.35}
 };
-function showSection(section){
- const templates=section==="templates";
+const slimeFrame=$("#slime-frame");
+let slimeLoaded=false;
+function showSection(section,changeUrl=true){
+ if(section==="slime"&&!(window.matchMedia&&window.matchMedia("(pointer:coarse)").matches))section="sim";
+ if(!["sim","templates","slime"].includes(section))section="sim";
+ const templates=section==="templates",slime=section==="slime";
  $("#templates-view").hidden=!templates;
- $("#sim-workspace").hidden=templates;
- $("#nav-sim").classList.toggle("active",!templates);
- $("#nav-templates").classList.toggle("active",templates);
- $("#nav-sim").setAttribute("aria-pressed",String(!templates));
- $("#nav-templates").setAttribute("aria-pressed",String(templates));
- if(!templates){liquidDirty=true;remaining=0}
+ $("#sim-workspace").hidden=templates||slime;
+ $("#slime-view").hidden=!slime;
+ for(const [mode,id] of [["sim","#nav-sim"],["templates","#nav-templates"],["slime","#nav-slime"]]){
+  const element=$(id);
+  element.classList.toggle("active",mode===section);
+  element.setAttribute("aria-pressed",String(mode===section));
+ }
+ if(slime&&!slimeLoaded){slimeFrame.src="./slime.html?embed=1";slimeLoaded=true}
+ if(!slime){liquidDirty=true;remaining=0}
+ if(changeUrl&&window.history&&window.history.replaceState){
+  const fragment=section==="sim"?"":"#"+section;
+  window.history.replaceState(null,"",window.location.pathname+window.location.search+fragment);
+ }
 }
 $("#nav-sim").addEventListener("click",()=>showSection("sim"));
 $("#nav-templates").addEventListener("click",()=>showSection("templates"));
+$("#nav-slime").addEventListener("click",()=>showSection("slime"));
+window.addEventListener("message",event=>{
+ if(event.origin!==window.location.origin||event.source!==slimeFrame.contentWindow)return;
+ const data=event.data;
+ if(data&&data.type==="liquid-lab:slime-height"&&Number.isFinite(data.height)){
+  slimeFrame.style.height=Math.min(2100,Math.max(320,data.height))+"px";
+ }
+});
+window.addEventListener("hashchange",()=>{
+ const mode=window.location.hash.slice(1);
+ showSection(mode==="slime"||mode==="templates"?mode:"sim",false);
+});
 document.querySelectorAll("[data-preset]").forEach(b=>b.addEventListener("click",()=>{
  Object.assign(settings,presets[b.dataset.preset]);refresh();
  document.querySelectorAll(".preset").forEach(e=>e.classList.toggle("active",e===b));
@@ -793,6 +827,7 @@ $("#reset-settings").addEventListener("click",()=>{
 $("#clear").addEventListener("click",()=>{particles=[];walls=[];rebuildWallBuckets();liquidDirty=true;$("#count").textContent="0"});
 refresh();
 if(window.matchMedia&&window.matchMedia("(max-width:600px)").matches)$("#physics-panel").open=false;
+showSection(window.location.hash==="#slime"?"slime":window.location.hash==="#templates"?"templates":"sim",false);
 })();
 </script>
 </body></html>
