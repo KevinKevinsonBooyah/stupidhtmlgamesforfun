@@ -192,6 +192,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 <button class="action" id="rain">🌧️ Rain: OFF</button>
 <button class="action" id="reverse">↟ Flip gravity</button>
 <button class="action" id="shake">💥 Splash!</button>
+<button class="action" id="ramp">↘ Ramp</button>
 <button class="action" id="pause">⏸ Pause</button>
 <button class="action" id="quality">⚡ Quality: Auto</button>
 <button class="action warn" id="clear">✕ Clear</button>
@@ -279,16 +280,24 @@ function renderBackground(){
 }
 renderBackground();
 function resize(){
+ // When templates hide the simulator, its rect becomes zero.
+ // Never collapse the drawing buffer while hidden.
  const rect=canvas.getBoundingClientRect();
+ if(!rect.width||!rect.height||rect.width<3||rect.height<3)return;
  const dpr=Math.min(window.devicePixelRatio||1,qualityResolved==="fast"?1.15:1.7);
- canvas.width=Math.max(1,Math.round(rect.width*dpr));
- canvas.height=Math.max(1,Math.round(rect.height*dpr));
+ const targetW=Math.max(2,Math.round(rect.width*dpr));
+ const targetH=Math.max(2,Math.round(rect.height*dpr));
+ if(canvas.width!==targetW||canvas.height!==targetH){
+  canvas.width=targetW;
+  canvas.height=targetH;
+  liquidDirty=true;
+ }
 }
 window.addEventListener("resize",()=>{
  resize();
  if(qualityChoice==="Auto"&&chooseQuality()!==qualityResolved)applyQuality();
 });
-if(window.ResizeObserver)new ResizeObserver(resize).observe(canvas);
+if(window.ResizeObserver)new ResizeObserver(resize).observe(canvas.parentElement||canvas);
 function chooseQuality(){
  return qualityChoice==="Auto"?(window.matchMedia&&window.matchMedia("(pointer: coarse)").matches||window.innerWidth<690?"fast":"smooth"):qualityChoice.toLowerCase();
 }
@@ -355,23 +364,44 @@ function addWall(o){
  if(walls.length>130){walls.shift();rebuildWallBuckets()}
  else indexWall(o);
 }
+// Capsule collisions preserve motion along sloped surfaces.
+// A swept test keeps fast-moving drops from passing through a ramp.
 function collide(p){
- if(p.x<R){p.x=R;p.px=p.x+p.vx*(settings.bounce/100)}
- if(p.x>W-R){p.x=W-R;p.px=p.x+p.vx*(settings.bounce/100)}
- if(p.y<R){p.y=R;p.py=p.y+p.vy*(settings.bounce/100)}
- if(p.y>H-R){p.y=H-R;p.py=p.y+p.vy*(settings.bounce/100)}
- for(const o of wallBuckets[Math.min(WALL_ROWS-1,Math.max(0,Math.floor(p.y/WALL_SIZE)))*WALL_COLS+Math.min(WALL_COLS-1,Math.max(0,Math.floor(p.x/WALL_SIZE)))]){
-  const x0=Math.min(o.ax,o.bx)-13,x1=Math.max(o.ax,o.bx)+13,y0=Math.min(o.ay,o.by)-13,y1=Math.max(o.ay,o.by)+13;
-  if(p.x<x0||p.x>x1||p.y<y0||p.y>y1)continue;
-  const dx=o.bx-o.ax,dy=o.by-o.ay,den=dx*dx+dy*dy||1;
-  const t=clamp(((p.x-o.ax)*dx+(p.y-o.ay)*dy)/den,0,1);
-  const ax=o.ax+t*dx,ay=o.ay+t*dy;
+ const bounce=settings.bounce/100;
+ if(p.x<R){p.x=R;if(p.vx<0)p.vx=-p.vx*bounce}
+ if(p.x>W-R){p.x=W-R;if(p.vx>0)p.vx=-p.vx*bounce}
+ if(p.y<R){p.y=R;if(p.vy<0)p.vy=-p.vy*bounce}
+ if(p.y>H-R){p.y=H-R;if(p.vy>0)p.vy=-p.vy*bounce}
+ const cx=Math.max(0,Math.min(WALL_COLS-1,Math.floor(p.x/WALL_SIZE)));
+ const cy=Math.max(0,Math.min(WALL_ROWS-1,Math.floor(p.y/WALL_SIZE)));
+ const bucket=wallBuckets[cy*WALL_COLS+cx],radius=R+7.5;
+ for(const o of bucket){
+  const dx=o.bx-o.ax,dy=o.by-o.ay,den=dx*dx+dy*dy;
+  if(den<.01)continue;
+  const len=Math.sqrt(den),sideNX=-dy/len,sideNY=dx/len;
+  const rawT=((p.x-o.ax)*dx+(p.y-o.ay)*dy)/den;
+  const t=clamp(rawT,0,1),ax=o.ax+t*dx,ay=o.ay+t*dy;
   let ex=p.x-ax,ey=p.y-ay,dist=Math.hypot(ex,ey);
-  if(dist<R+7){
-   if(dist<.001){ex=-dy||1;ey=dx||0;dist=Math.hypot(ex,ey)}
-   const overlap=R+7-dist;
-   p.x+=ex/dist*overlap;p.y+=ey/dist*overlap;
-   p.px=p.x+p.vx*.09;p.py=p.y+p.vy*.09;
+  const prevSide=(p.px-o.ax)*sideNX+(p.py-o.ay)*sideNY;
+  const nowSide=(p.x-o.ax)*sideNX+(p.y-o.ay)*sideNY;
+  const crossed=rawT>-.05&&rawT<1.05&&prevSide*nowSide<0&&Math.abs(prevSide)<radius+28;
+  if(dist<radius||crossed){
+   let nx,ny;
+   if(crossed||dist<.00001){
+    const sign=prevSide===0?(nowSide>=0?1:-1):(prevSide>0?1:-1);
+    nx=sideNX*sign;ny=sideNY*sign;
+    p.x=ax+nx*radius;p.y=ay+ny*radius;
+   }else{
+    nx=ex/dist;ny=ey/dist;
+    p.x+=nx*(radius-dist);p.y+=ny*(radius-dist);
+   }
+   // Remove normal velocity, not the tangent. Gravity now drives
+   // natural down-slope motion instead of sticking at the contact.
+   const incoming=p.vx*nx+p.vy*ny;
+   if(incoming<0){
+    p.vx-=incoming*(1+bounce*.55)*nx;
+    p.vy-=incoming*(1+bounce*.55)*ny;
+   }
   }
  }
 }
@@ -451,6 +481,20 @@ function physics(){
    if(total){p.vx+=(sumX/total-p.vx)*mix;p.vy+=(sumY/total-p.vy)*mix}
   }
  }
+}
+function buildRamp(){
+ walls=walls.filter(o=>!o.ramp);
+ addWall({ax:145,ay:245,bx:610,by:390,ramp:true});
+ rebuildWallBuckets();
+ if(particles.length<effectiveLimit){
+  for(let i=0;i<190&&particles.length<effectiveLimit;i++){
+   const x=clamp(185+(i%15)*9+rnd(-2,2),20,W-20);
+   const y=clamp(65+Math.floor(i/15)*9+rnd(-2,2),20,220);
+   add(x,y,1,rnd(-.5,.7),rnd(0,1));
+  }
+ }
+ liquidDirty=true;paused=false;
+ $("#pause").textContent="⏸ Pause";$("#pause").classList.remove("active");
 }
 function splash(){
  for(const p of particles){
@@ -751,6 +795,10 @@ function showSection(section,changeUrl=true){
   slimeFrame.contentWindow.postMessage({type:"liquid-lab:slime-active",active:slime},window.location.origin);
  }
  if(!slime){liquidDirty=true;remaining=0}
+ if(section==="sim"){
+  resize();
+  requestAnimationFrame(()=>{resize();liquidDirty=true});
+ }
  if(changeUrl&&window.history&&window.history.replaceState){
   const fragment=section==="sim"?"":"#"+section;
   window.history.replaceState(null,"",window.location.pathname+window.location.search+fragment);
@@ -805,6 +853,7 @@ $("#reverse").addEventListener("click",()=>{
  $("#reverse").classList.toggle("active",flipped);
 });
 $("#shake").addEventListener("click",splash);
+$("#ramp").addEventListener("click",buildRamp);
 $("#pause").addEventListener("click",()=>{
  paused=!paused;$("#pause").textContent=paused?"▶ Resume":"⏸ Pause";
  $("#pause").classList.toggle("active",paused);
