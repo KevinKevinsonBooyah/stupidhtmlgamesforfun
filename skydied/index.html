@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#152c44"><meta name="description" content="Skydied: dodge obstacles while falling from a skyscraper and aim for a pillow.">
-<title>Skydied | HTML GAME CENTER</title><link rel="icon" href="../hub-dog-icon.png">
+<title>Sky-died | HTML GAME CENTER</title><link rel="icon" href="../hub-dog-icon.png">
 <style>
 :root{color-scheme:dark;--ink:#eaf8ff;--panel:#163b58;--edge:#467d9b;--soft:#badbec}
 *{box-sizing:border-box}
@@ -42,22 +42,33 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:500/750;touch-action:no
 @media(pointer:coarse){.touch{display:grid}}
 @media(max-width:540px){main{padding:9px 8px 21px}header{margin-bottom:6px}h1{font-size:30px}.subtitle{font-size:10px}.stage{border-radius:14px}.chip{padding:6px 7px;font-size:9px}.progress{top:39px}.touch{gap:7px;margin-top:9px}.touch button{min-height:60px}.legend{font-size:10px}}
 @media(max-height:750px) and (max-width:540px){canvas{aspect-ratio:500/690}.touch button{min-height:55px}}
+
+.rooftop-jump{position:absolute;z-index:4;left:50%;bottom:18px;transform:translateX(-50%);background:linear-gradient(135deg,#d5f6ff,#7fc9ed);border:2px solid #ffffffbd;color:#113750;font-size:17px;letter-spacing:.045em;font-weight:1000;border-radius:15px;padding:15px 25px;min-width:193px;min-height:55px;box-shadow:0 6px 26px #021b4180;animation:jumpPulse 2.1s ease-in-out infinite}
+.rooftop-jump span{font-size:21px;margin-left:6px}
+.rooftop-jump:active{transform:translateX(-50%) scale(.97)}
+.rooftop-jump[hidden],.roof-caption[hidden]{display:none!important}
+.roof-caption{position:absolute;z-index:2;bottom:94px;left:50%;transform:translateX(-50%);white-space:nowrap;border:1px solid #d8f5ff60;background:#0c3354c8;color:#dff8ff;padding:8px 12px;border-radius:10px;font-size:11px;font-weight:800;pointer-events:none;letter-spacing:.045em}
+@keyframes jumpPulse{0%,100%{box-shadow:0 6px 22px #021b4180}50%{box-shadow:0 3px 35px #b1f4ff96}}
+@media(max-width:540px){.rooftop-jump{min-width:165px;padding:13px 17px;font-size:14px;bottom:12px;min-height:50px}.roof-caption{bottom:77px;font-size:9px;padding:7px 9px}}
+@media(prefers-reduced-motion:reduce){.rooftop-jump{animation:none}}
 </style>
 </head>
 <body>
 <main>
 <header><a href="../">← GAME CENTER</a><span>☁️ EXTREME PILLOW SPORTS</span></header>
-<h1>Sky<em>died.</em></h1>
-<p class="subtitle">Fall from the skyscraper. Dodge everything. Land on the pillow. Somehow.</p>
+<h1>Sky<em>-died.</em></h1>
+<p class="subtitle">One enormous skyscraper. One tiny pillow. Bad decisions.</p>
 <section class="stage">
- <canvas id="game" width="500" height="750" aria-label="Skydied falling and dodging game"></canvas>
+ <canvas id="game" width="500" height="750" aria-label="Sky-died rooftop and falling game"></canvas>
  <div class="hud">
   <div class="left"><span class="chip">LEVEL <strong id="level">1</strong></span><span class="chip">❤️ <strong id="health">3</strong></span></div>
   <div class="right"><span class="chip">⬇ <strong id="distance">0</strong>m</span><span class="chip" id="wind">WIND →</span></div>
  </div>
  <div class="progress"><div id="progress"></div></div>
- <div class="overlay" id="overlay">
-  <div class="dialog"><div class="emoji" id="icon">🏙️</div><h2 id="title">SKYDIED</h2><p id="description">Jump off a skyscraper, steer around obstacles, and land on the giant pillow below. Hold BRAKE to slow your fall.</p><button id="play">JUMP!</button></div>
+ <div class="roof-caption" id="roof-caption">🏙️ ROOFTOP · 1,000+ METERS UP</div>
+ <button class="rooftop-jump" id="jump" aria-label="Jump from skyscraper">JUMP OFF <span>↓</span></button>
+ <div class="overlay" id="overlay" hidden>
+  <div class="dialog"><div class="emoji" id="icon">🏙️</div><h2 id="title">SKY-DIED</h2><p id="description">Jump off a skyscraper, steer around obstacles, and land on the giant pillow below. Hold BRAKE to slow your fall.</p><button id="play">JUMP!</button></div>
  </div>
 </section>
 <div class="touch">
@@ -65,7 +76,7 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:500/750;touch-action:no
  <button class="brake" id="brake" aria-label="Air brake">🪂 BRAKE</button>
  <button id="right" aria-label="Steer right">▶</button>
 </div>
-<div class="legend">A / D or ← / → to steer · SPACE or ↓ to brake · On-screen buttons on mobile</div>
+<div class="legend">On the roof: use ← / → to walk. Press JUMP OFF to start. In the air: steer and hold BRAKE to slow down.</div>
 </main>
 <script>
 (()=>{
@@ -73,40 +84,70 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:500/750;touch-action:no
 const $=s=>document.querySelector(s),c=$("#game"),g=c.getContext("2d",{alpha:false}),SW=500,SH=750,TAU=Math.PI*2;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n)),rand=(a,b)=>a+Math.random()*(b-a);
 const inputs={left:false,right:false,brake:false},keys=new Set();
-let level=1,groundY=2250,player=null,camY=-100,pillow=null,obstacles=[],specks=[],stars=[],clouds=[],state="menu",time=0,last=0,acc=0,invuln=0,shake=0,wind=0,landedTimer=0,score=0;
+const ROOF_Y=220;
+let level=1,groundY=12500,player=null,camY=-100,pillow=null,obstacles=[],specks=[],stars=[],clouds=[],state="roof",time=0,last=0,acc=0,invuln=0,shake=0,wind=0,landedTimer=0,score=0,buildingLights=[],citySeed=0,takeoff=0,flash=0;
+
 function circle(x,y,r,col){g.fillStyle=col;g.beginPath();g.arc(x,y,r,0,TAU);g.fill()}
 function spawnFX(x,y,col,n=18,force=1){
  for(let i=0;i<n;i++){const a=rand(0,TAU),v=rand(1,5)*force;specks.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-1,life:rand(20,45),col})}
  if(specks.length>170)specks.splice(0,specks.length-170);
 }
 function generateLevel(n){
- level=n;groundY=2350+(n-1)*390;camY=-100;obstacles=[];specks=[];stars=[];clouds=[];time=0;invuln=0;shake=0;landedTimer=0;
- pillow={x:clamp(250+Math.sin(n*2.3)*100,145,355),w:119-(n>4?10:0)};
- player={x:250,y:28,vx:0,vy:1.8,r:16,hp:3,spin:0,face:0};
- wind=level===1?0:Math.sin(n*2.4)*(.05+.027*Math.min(level,9));
- let gap=195-Math.min(55,level*8),y=250,k=0;
- while(y<groundY-220){
-  const type=["bird","drone","sign","scaffold","antenna","kite"][(k+Math.floor(rand(0,5)))%6];
-  const size=type==="scaffold"?125:type==="sign"?95:type==="antenna"?90:45;
-  const x=rand(90,410);
-  obstacles.push({type,x:clamp(x,85+size*.5,415-size*.5),y,w:size,h:type==="scaffold"?27:type==="sign"?53:type==="antenna"?24:38,vx:rand(.4,1.5)*(k%2?-1:1),phase:rand(0,TAU),hit:false});
-  if(level>=4&&k%3===2){
-   const ox=x>250?115:385;
-   obstacles.push({type:"bird",x:ox,y:y+72,w:39,h:28,vx:rand(.5,1.5),phase:rand(0,TAU),hit:false});
+ level=n;
+ // Roughly 1+ km of fall, increasing by hundreds of meters each level.
+ groundY=12500+(n-1)*2800;camY=-110;
+ obstacles=[];specks=[];stars=[];clouds=[];buildingLights=[];
+ time=0;invuln=0;shake=0;landedTimer=0;flash=0;takeoff=0;citySeed=n;
+ pillow={x:clamp(250+Math.sin(n*2.3)*95,150,350),w:120-(n>4?Math.min(22,n*2):0)};
+ player={x:250,y:ROOF_Y-35,vx:0,vy:0,r:16,hp:3,spin:0,face:0};
+ wind=level===1?0:Math.sin(n*2.4)*(.045+.018*Math.min(level,9));
+ const types=["bird","drone","sign","scaffold","antenna","kite","helicopter","crane","billboard","windowCleaner","balloon","fan","glass","beam"];
+ let gap=Math.max(162,285-level*9),y=560,k=0;
+ while(y<groundY-300){
+  const type=types[(k*7+Math.floor(rand(0,types.length)))%types.length];
+  const size=type==="crane"?160:type==="billboard"?136:type==="scaffold"?123:type==="helicopter"?120:type==="sign"?96:type==="beam"?114:type==="windowCleaner"?94: type==="fan"?80: type==="antenna"?85:49;
+  const h=type==="crane"?28:type==="billboard"?70:type==="sign"?54:type==="windowCleaner"?30:type==="scaffold"?27:type==="beam"?22:39;
+  const x=rand(120,380);
+  obstacles.push({type,x:clamp(x,81+size*.5,419-size*.5),y,w:size,h,vx:rand(.5,1.7)*(k%2?-1:1),phase:rand(0,TAU),hit:false});
+  if(level>=3&&k%4===2){
+   const x2=x>250?112:388;
+   obstacles.push({type:types[(k*3+5)%types.length],x:x2,y:y+82,w:65,h:37,vx:rand(.45,1.4)*(k%2?1:-1),phase:rand(0,TAU),hit:false});
   }
-  y+=gap+rand(-43,52);k++;
+  y+=gap+rand(-48,80);k++;
  }
- for(let i=0;i<27;i++)clouds.push({x:rand(30,470),y:rand(70,groundY),radius:rand(25,75),shade:Math.random()});
- $("#level").textContent=level;$("#health").textContent=player.hp;$("#distance").textContent=Math.round(groundY/10);
- $("#progress").style.width="0%";$("#wind").textContent=Math.abs(wind)<.01?"CALM":wind>0?"WIND →":"← WIND";
+ for(let i=0;i<115;i++)clouds.push({x:rand(30,470),y:rand(80,groundY),radius:rand(25,105),shade:Math.random(),depth:rand(.2,.65)});
+ for(let i=0;i<26;i++)buildingLights.push({x:rand(10,490),y:rand(150,groundY),r:rand(1,4),shade:Math.random()});
+ $("#level").textContent=level;$("#health").textContent=player.hp;
+ $("#distance").textContent=Math.round((groundY-player.y)/10);
+ $("#progress").style.width="0%";
+ $("#wind").textContent=Math.abs(wind)<.01?"CALM":wind>0?"WIND →":"← WIND";
+ state="roof";
+ $("#overlay").hidden=true;
+ $("#jump").hidden=false;
+ $("#roof-caption").hidden=false;
+ $("#roof-caption").textContent="🏙️ ROOFTOP · "+Math.round(groundY/10)+"m UP";
+ $("#progress").style.width="0%";
 }
+function jump(){
+ if(state!=="roof")return;
+ state="falling";
+ player.vy=2.8;player.y=ROOF_Y-35;takeoff=35;shake=5;flash=.7;
+ $("#jump").hidden=true;$("#roof-caption").hidden=true;
+ spawnFX(player.x,ROOF_Y,"#d8f7ff",24,1.1);
+ last=0;acc=0;
+}
+$("#jump").addEventListener("click",jump);
 function dialog(icon,title,description,button){
  $("#icon").textContent=icon;$("#title").textContent=title;$("#description").textContent=description;$("#play").textContent=button;$("#overlay").hidden=false;
 }
 function start(){
- if(state==="next"){generateLevel(level+1)}
- else if(state==="dead"||state==="miss"||state==="menu"){generateLevel(state==="menu"?1:level)}
- state="falling";$("#overlay").hidden=true;acc=0;last=0;
+ if(state==="next")generateLevel(level+1);
+ else if(state==="dead"||state==="miss")generateLevel(level);
+ else if(state==="menu")generateLevel(1);
+ // Restart/next screen returns to a real rooftop. Jump is a separate action.
+ $("#overlay").hidden=true;
+ state="roof";$("#jump").hidden=false;$("#roof-caption").hidden=false;
+ resetButtons();last=0;acc=0;
 }
 $("#play").addEventListener("click",start);
 function resetButtons(){inputs.left=false;inputs.right=false;inputs.brake=false;for(const e of document.querySelectorAll(".touch button"))e.classList.remove("held")}
@@ -118,7 +159,9 @@ function setupHold(id,field){
 }
 setupHold("left","left");setupHold("right","right");setupHold("brake","brake");
 window.addEventListener("keydown",e=>{
- const key=e.key.toLowerCase();if(["arrowleft","arrowright","arrowdown"," ","a","d","s"].includes(key))e.preventDefault();keys.add(key)
+ const key=e.key.toLowerCase();if(["arrowleft","arrowright","arrowdown"," ","a","d","s","j","enter"].includes(key))e.preventDefault();
+ keys.add(key);
+ if((key==="j"||key==="enter")&&state==="roof")jump();
 });
 window.addEventListener("keyup",e=>keys.delete(e.key.toLowerCase()));
 window.addEventListener("blur",()=>{keys.clear();resetButtons()});
@@ -150,14 +193,22 @@ function landing(){
  }
 }
 function update(){
- time++;if(invuln>0)invuln--;if(shake>0)shake*=.83;
+ time++;if(invuln>0)invuln--;if(shake>0)shake*=.83;if(flash>0)flash=Math.max(0,flash-.033);
  if(state==="landed"){
   landedTimer--;
   for(const p of specks){p.x+=p.vx;p.y+=p.vy;p.vy+=.11;p.life--}
   if(landedTimer===0){state="next";dialog("🛏️","PILLOW PERFECT!","Level "+level+" cleared! The next jump has more hazards and a longer fall.","NEXT SKYSCRAPER →")}
   return;
  }
+ if(state==="roof"){
+  const direction=steer();
+  player.x=clamp(player.x+direction*3.15,108,392);
+  player.spin=Math.sin(time*.065)*.015;
+  camY=-110;
+  return;
+ }
  if(state!=="falling")return;
+ if(takeoff>0)takeoff--;
  const direction=steer(),brake=braking();
  const ax=direction*.29+wind*(brake?.42:1);
  player.vx=clamp((player.vx+ax)*.971,-4.8,4.8);
@@ -293,7 +344,7 @@ function frame(t){
  if(!last)last=t;
  const dt=Math.min(.06,(t-last)/1000);last=t;
  acc=Math.min(.06,acc+dt);
- if(state==="falling"||state==="landed"){let count=0;while(acc>=1/60&&count<3){update();acc-=1/60;count++}}
+ if(state==="roof"||state==="falling"||state==="landed"){let count=0;while(acc>=1/60&&count<3){update();acc-=1/60;count++}}
  else acc=0;
  draw();
  requestAnimationFrame(frame);
