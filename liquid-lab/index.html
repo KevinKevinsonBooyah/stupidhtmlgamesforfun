@@ -186,13 +186,13 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 </section>
 <div class="workspace" id="sim-workspace">
 <div class="stage-shell">
-<div class="stage"><canvas id="fluid" aria-label="Interactive liquid simulation"></canvas><div class="stage-top"><div class="stage-tag">💧 <strong id="count">0</strong></div><span id="state" hidden>● SIMULATION LIVE</span></div><div class="stage-tip" id="tip">Drag to pour · Select Grab to lift the water</div></div>
+<div class="stage"><canvas id="fluid" width="760" height="520" aria-label="Interactive liquid simulation"></canvas><div class="stage-top"><div class="stage-tag">💧 <strong id="count">0</strong></div><span id="state" hidden>● SIMULATION LIVE</span></div><div class="stage-tip" id="tip">Drag to pour · Select Grab to lift the water</div></div>
 <div class="actionbar">
 <button class="action primary" id="fill">💧 Add water</button>
 <button class="action" id="rain">🌧️ Rain: OFF</button>
 <button class="action" id="reverse">↟ Flip gravity</button>
 <button class="action" id="shake">💥 Splash!</button>
-<button class="action" id="ramp">↘ Ramp</button>
+
 <button class="action" id="pause">⏸ Pause</button>
 <button class="action" id="quality">⚡ Quality: Auto</button>
 <button class="action warn" id="clear">✕ Clear</button>
@@ -279,25 +279,48 @@ function renderBackground(){
  g.strokeStyle="#7fcaff1e";g.lineWidth=3;g.strokeRect(2,2,W-4,H-4);
 }
 renderBackground();
+let lastGoodWidth=0,lastGoodHeight=0,needsRenderRecovery=true;
 function resize(){
- // When templates hide the simulator, its rect becomes zero.
- // Never collapse the drawing buffer while hidden.
+ const stage=canvas.closest(".stage");
  const rect=canvas.getBoundingClientRect();
- if(!rect.width||!rect.height||rect.width<3||rect.height<3)return;
+ const stageRect=stage&&stage.getBoundingClientRect();
+ const hidden=$("#sim-workspace").hidden;
+ // Hiding the simulator must never overwrite its live drawing buffer.
+ if(hidden){needsRenderRecovery=true;return}
+ let width=rect.width||canvas.clientWidth||(stageRect&&stageRect.width)||Math.min(W,window.innerWidth-20);
+ if(!Number.isFinite(width)||width<10){needsRenderRecovery=true;return}
+ let height=rect.height||width*(window.innerWidth<=600?655/760:520/760);
+ if(!Number.isFinite(height)||height<10)height=width*520/760;
  const dpr=Math.min(window.devicePixelRatio||1,qualityResolved==="fast"?1.15:1.7);
- const targetW=Math.max(2,Math.round(rect.width*dpr));
- const targetH=Math.max(2,Math.round(rect.height*dpr));
- if(canvas.width!==targetW||canvas.height!==targetH){
-  canvas.width=targetW;
-  canvas.height=targetH;
+ const bw=Math.max(2,Math.round(width*dpr)),bh=Math.max(2,Math.round(height*dpr));
+ if(canvas.width!==bw||canvas.height!==bh){
+  canvas.width=bw;canvas.height=bh;
+  liquidDirty=true;needsRenderRecovery=true;
+ }
+ lastGoodWidth=bw;lastGoodHeight=bh;
+}
+function restoreCanvas(force=false){
+ if($("#sim-workspace").hidden)return;
+ // Some mobile browsers temporarily report zero layout during tab switches,
+ // orientation changes, and browser-bar expansion.
+ resize();
+ if(force||needsRenderRecovery){
+  if(canvas.width<2||canvas.height<2){
+   canvas.width=lastGoodWidth||760;canvas.height=lastGoodHeight||520;
+  }
   liquidDirty=true;
+  needsRenderRecovery=false;
  }
 }
 window.addEventListener("resize",()=>{
  resize();
  if(qualityChoice==="Auto"&&chooseQuality()!==qualityResolved)applyQuality();
 });
-if(window.ResizeObserver)new ResizeObserver(resize).observe(canvas.parentElement||canvas);
+if(window.ResizeObserver)new ResizeObserver(()=>{needsRenderRecovery=true;resize()}).observe(canvas.parentElement||canvas);
+window.addEventListener("pageshow",()=>restoreCanvas(true));
+window.addEventListener("focus",()=>restoreCanvas(true));
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)restoreCanvas(true)});
+window.addEventListener("orientationchange",()=>restoreCanvas(true));
 function chooseQuality(){
  return qualityChoice==="Auto"?(window.matchMedia&&window.matchMedia("(pointer: coarse)").matches||window.innerWidth<690?"fast":"smooth"):qualityChoice.toLowerCase();
 }
@@ -481,20 +504,6 @@ function physics(){
    if(total){p.vx+=(sumX/total-p.vx)*mix;p.vy+=(sumY/total-p.vy)*mix}
   }
  }
-}
-function buildRamp(){
- walls=walls.filter(o=>!o.ramp);
- addWall({ax:145,ay:245,bx:610,by:390,ramp:true});
- rebuildWallBuckets();
- if(particles.length<effectiveLimit){
-  for(let i=0;i<190&&particles.length<effectiveLimit;i++){
-   const x=clamp(185+(i%15)*9+rnd(-2,2),20,W-20);
-   const y=clamp(65+Math.floor(i/15)*9+rnd(-2,2),20,220);
-   add(x,y,1,rnd(-.5,.7),rnd(0,1));
-  }
- }
- liquidDirty=true;paused=false;
- $("#pause").textContent="⏸ Pause";$("#pause").classList.remove("active");
 }
 function splash(){
  for(const p of particles){
@@ -716,6 +725,7 @@ function updateStats(time){
 }
 function frame(time){
  if(!last)last=time;
+ if(needsRenderRecovery&&!$("#sim-workspace").hidden)restoreCanvas();
  let dt=Math.min((time-last)/1000,.06);last=time;
  if($("#sim-workspace").hidden){
   remaining=0;
@@ -727,7 +737,12 @@ function frame(time){
   let count=0;
   while(remaining>=1/60&&count<2){simulate();remaining-=1/60;count++}
  }else remaining=0;
- draw(time);
+ try{draw(time)}
+ catch(err){
+  // A transient canvas exception should not permanently stop the game loop.
+  liquidDirty=true;needsRenderRecovery=true;
+  if(window.console&&window.console.warn)window.console.warn("Liquid Lab rendering recovered",err);
+ }
  updateStats(time);
  requestAnimationFrame(frame);
 }
@@ -796,8 +811,9 @@ function showSection(section,changeUrl=true){
  }
  if(!slime){liquidDirty=true;remaining=0}
  if(section==="sim"){
-  resize();
-  requestAnimationFrame(()=>{resize();liquidDirty=true});
+  needsRenderRecovery=true;
+  restoreCanvas(true);
+  requestAnimationFrame(()=>restoreCanvas(true));
  }
  if(changeUrl&&window.history&&window.history.replaceState){
   const fragment=section==="sim"?"":"#"+section;
@@ -853,7 +869,7 @@ $("#reverse").addEventListener("click",()=>{
  $("#reverse").classList.toggle("active",flipped);
 });
 $("#shake").addEventListener("click",splash);
-$("#ramp").addEventListener("click",buildRamp);
+
 $("#pause").addEventListener("click",()=>{
  paused=!paused;$("#pause").textContent=paused?"▶ Resume":"⏸ Pause";
  $("#pause").classList.toggle("active",paused);
