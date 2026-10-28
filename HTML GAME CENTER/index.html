@@ -3,43 +3,103 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#151719">
+<meta name="theme-color" content="#121a20">
 <link rel="icon" type="image/png" href="../hub-dog-icon.png?v=3">
 <link rel="apple-touch-icon" href="../hub-dog-icon.png?v=3">
 <title>HTML GAME CENTER</title>
 <style>
-:root{color-scheme:dark}
+:root{color-scheme:dark;--bg:#11191f;--panel:#1b282f;--line:#355058;--ink:#f2faf8;--soft:#b2c8c6;--mint:#b8f4d7;--blue:#89d8e7}
 *{box-sizing:border-box}
-body{margin:0;min-height:100dvh;background:#151719;color:#f1f3f3;font-family:system-ui,-apple-system,sans-serif}
+html{min-height:100%;background:var(--bg)}
+body{margin:0;min-height:100dvh;color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:radial-gradient(ellipse at 85% -20%,#28474f 0,#11191f 58%)}
 a{color:inherit;text-decoration:none}
-a:focus-visible{outline:2px solid #a9dcd6;outline-offset:4px}
-main{max-width:810px;margin:auto;padding:clamp(15px,4vw,32px)}
-header{display:flex;align-items:center;gap:12px;padding-bottom:20px;border-bottom:1px solid #33383a}
-header img{width:47px;height:47px;border-radius:12px;object-fit:cover;display:block;border:1px solid #505456}
-header h1{font-size:19px;letter-spacing:-.025em;margin:0;font-weight:800}
-h2{font-size:13px;text-transform:uppercase;letter-spacing:.095em;color:#9ba3a6;margin:25px 0 12px}
-.game{position:relative;display:flex;align-items:center;gap:17px;background:#222629;border:1px solid #3a4245;border-radius:17px;padding:15px;min-height:112px;overflow:hidden;transition:background .2s,border-color .2s,transform .2s}
-.game:hover{background:#2a3033;border-color:#85b0b0;transform:translateY(-2px)}
-.art{width:84px;height:79px;flex-shrink:0;border-radius:13px;background:radial-gradient(circle at 42% 40%,#446c72,#29383d 65%);display:grid;place-items:center}
-.drop{width:46px;height:52px;border-radius:58% 42% 64% 36%/69% 64% 36% 31%;background:linear-gradient(130deg,#bce4e6,#65a7b0 60%,#3e7f8d);transform:rotate(-35deg);box-shadow:inset 7px 6px 9px #f0ffff60,inset -8px -8px 11px #1b485a70;animation:float 4s ease-in-out infinite}
-.info{min-width:0;flex:1}
-.info strong{font-size:20px;letter-spacing:-.035em;display:block;margin-bottom:5px}
-.info span{font-size:12px;color:#acb9bb;line-height:1.5}
-.arrow{width:32px;height:32px;display:grid;place-items:center;border-radius:10px;background:#334244;color:#d4f4f0;font-size:21px}
-@keyframes float{0%,100%{translate:0 0}50%{translate:0 -5px}}
-@media(max-width:480px){main{padding:16px 13px}header{padding-bottom:15px}header img{width:42px;height:42px}header h1{font-size:17px}h2{margin:21px 0 11px}.game{padding:11px;gap:12px;min-height:99px;border-radius:14px}.art{width:67px;height:69px}.drop{width:35px;height:40px}.info strong{font-size:18px}.info span{font-size:11px}.arrow{width:28px;height:28px}}
-@media(prefers-reduced-motion:reduce){.drop{animation:none}.game{transition:none}}
+a:focus-visible{outline:2px solid var(--mint);outline-offset:4px}
+.shell{max-width:920px;margin:auto;padding:22px clamp(14px,4vw,32px) 50px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:20px;border-bottom:1px solid #405056}
+.brand{display:flex;gap:13px;align-items:center}
+.brand img{width:49px;height:49px;object-fit:cover;border-radius:13px;border:1px solid #647371;display:block}
+.brand h1{font-size:18px;letter-spacing:-.035em;margin:0}
+.brand p{font-size:11px;color:#a1b5b5;margin:4px 0 0}
+.count{border:1px solid #46645e;border-radius:99px;color:#c2e6d3;background:#21362e;padding:7px 11px;font-size:11px;font-weight:750;white-space:nowrap}
+.count i{display:inline-block;width:6px;height:6px;background:#9af5bc;border-radius:50%;margin-right:5px;box-shadow:0 0 9px #9af5bc77}
+.hero{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:30px 0 26px}
+.hero .eyebrow{font-size:11px;color:#96c8bd;letter-spacing:.18em;text-transform:uppercase;font-weight:850;margin:0 0 10px}
+.hero h2{font-size:clamp(28px,6vw,48px);line-height:1.05;letter-spacing:-.055em;margin:0}
+.hero h2 span{color:#9fe9d9}
+.hero .sub{margin:10px 0 0;color:#a9bdbe;font-size:13px;line-height:1.5}
+.hero .orbit{width:120px;height:120px;flex-shrink:0;position:relative;display:grid;place-items:center;border:1px solid #4b6c6b;border-radius:50%;background:radial-gradient(circle,#315f65 0%,#1b333b 65%,transparent 69%);box-shadow:0 0 45px #5ee2cf14}
+.orbit::before,.orbit::after{content:"";position:absolute;border:1px solid #9fe8dd56;border-radius:50%}
+.orbit::before{inset:13px;border-style:dashed;animation:spin 22s linear infinite}
+.orbit::after{width:10px;height:10px;border:0;background:#abf5e5;right:1px;top:20px;box-shadow:0 0 15px #abf5e596;animation:orb 5s ease-in-out infinite}
+.orbit .drop{font-size:55px;filter:drop-shadow(0 9px 12px #061f2777);animation:bob 3s ease-in-out infinite}
+.section-line{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px}
+.section-line h3{font-size:13px;text-transform:uppercase;letter-spacing:.10em;color:#b4cfcd;margin:0}
+.section-line small{font-size:11px;color:#8faeaa}
+.featured{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:18px;align-items:center;background:linear-gradient(125deg,#253d43,#1c2c35 70%);border:1px solid #517078;border-radius:20px;padding:22px;overflow:hidden;transition:transform .18s,border-color .18s}
+.featured:hover{border-color:#96d6cb;transform:translateY(-2px)}
+.featured .tag{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#a5e6d5;font-weight:850}
+.featured h4{font-size:clamp(23px,4vw,31px);letter-spacing:-.055em;line-height:1.1;margin:10px 0}
+.featured p{font-size:13px;color:#bed1d0;line-height:1.55;margin:0 0 17px;max-width:410px}
+.play{display:inline-flex;align-items:center;gap:9px;color:#d1fff1;font-size:12px;font-weight:850;background:#34665c;border:1px solid #6eae9e;padding:10px 14px;border-radius:10px}
+.featured:hover .play{background:#44796c}
+.preview{height:150px;border:1px solid #84c7d144;border-radius:14px;background:linear-gradient(#152e3b,#233d50);position:relative;overflow:hidden;isolation:isolate}
+.preview .wave{position:absolute;bottom:-9px;left:-20%;width:140%;height:63%;background:linear-gradient(160deg,#9ee5eaba,#417fa9b6);border-radius:46% 54% 0 0 / 20% 28% 0 0;animation:water 5s ease-in-out infinite}
+.preview .wave::before{content:"";position:absolute;top:0;left:0;width:100%;height:11px;background:#c1fff988;border-radius:50%;filter:blur(4px)}
+.preview .bubble{position:absolute;border-radius:50%;border:1px solid #d3fbffae;background:#bdf7fe23;animation:rise 5s ease-in infinite}
+.preview .bubble.one{left:22%;bottom:20%;width:12px;height:12px;animation-delay:0s}
+.preview .bubble.two{left:68%;bottom:12%;width:19px;height:19px;animation-delay:1.2s}
+.preview .bubble.three{left:50%;bottom:15%;width:8px;height:8px;animation-delay:3s}
+.preview .label{position:absolute;top:11px;left:11px;color:#b9dcd7;font-size:9px;letter-spacing:.09em;font-weight:800}
+.modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:13px}
+.mode{display:flex;align-items:center;gap:11px;border:1px solid #354e51;background:#1b282b;border-radius:13px;padding:14px;min-height:83px;transition:background .17s,border-color .17s,transform .17s}
+.mode:hover{background:#283a3d;border-color:#83b8af;transform:translateY(-2px)}
+.mode-icon{width:39px;height:39px;border-radius:12px;background:#2a4648;display:grid;place-items:center;font-size:22px;flex-shrink:0}
+.mode strong{font-size:13px;display:block}
+.mode span{display:block;font-size:11px;color:#9fb6b5;margin-top:3px;line-height:1.3}
+.mode .arrow{margin-left:auto;color:#91c6bf;font-size:20px;flex-shrink:0}
+footer{color:#7d9998;font-size:11px;margin-top:25px}
+@keyframes water{0%,100%{transform:translateY(5px) rotate(-3deg)}50%{transform:translateY(-11px) rotate(3deg)}}
+@keyframes rise{0%{transform:translateY(30px) scale(.65);opacity:0}20%{opacity:.85}90%{opacity:.7}100%{transform:translateY(-150px) scale(1.4);opacity:0}}
+@keyframes bob{0%,100%{transform:translateY(2px)}50%{transform:translateY(-7px)}}
+@keyframes orb{50%{transform:translate(-9px,7px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:630px){
+ .shell{padding:15px 13px 30px}header{padding-bottom:14px}
+ .brand img{width:43px;height:43px}.brand h1{font-size:16px}
+ .hero{padding:22px 0 19px;gap:8px}.hero h2{font-size:clamp(26px,7vw,36px)}.hero .sub{font-size:12px}
+ .hero .orbit{width:76px;height:76px}.hero .orbit .drop{font-size:38px}.orbit::before{inset:8px}
+ .featured{grid-template-columns:minmax(0,1fr) 100px;padding:17px;gap:9px;border-radius:15px}
+ .featured h4{font-size:25px;margin:7px 0}.featured p{font-size:11px;margin-bottom:12px}
+ .preview{height:112px;border-radius:10px}.preview .label{display:none}
+ .modes{grid-template-columns:1fr;gap:7px;margin-top:9px}
+ .mode{min-height:62px;padding:10px 12px}.mode-icon{width:36px;height:36px}
+}
+@media(max-width:340px){.featured{grid-template-columns:1fr}.preview{display:none}.hero .orbit{display:none}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<main>
-<header><img src="../hub-dog-icon.png?v=3" alt="Dog icon"><h1>HTML GAME CENTER</h1></header>
-<h2>Games</h2>
-<a class="game" href="../liquid-lab/" aria-label="Open Liquid Lab">
- <div class="art" aria-hidden="true"><div class="drop"></div></div>
- <div class="info"><strong>Liquid Lab</strong><span>Fluid simulator · Slime Mode</span></div>
- <span class="arrow" aria-hidden="true">›</span>
+<main class="shell">
+<header>
+ <div class="brand"><img src="../hub-dog-icon.png?v=3" alt="Dog icon"><div><h1>HTML GAME CENTER</h1><p>Little games, big ideas.</p></div></div>
+ <span class="count"><i></i> 1 GAME</span>
+</header>
+<section class="hero">
+ <div><p class="eyebrow">WELCOME BACK</p><h2>Pick something.<br><span>Make a mess.</span></h2><p class="sub">A collection of browser games and experiments.</p></div>
+ <div class="orbit" aria-hidden="true"><span class="drop">💧</span></div>
+</section>
+<div class="section-line"><h3>Featured game</h3><small>Available now</small></div>
+<a class="featured" href="../liquid-lab/">
+ <div><span class="tag">PHYSICS SANDBOX · NEW</span><h4>💧 Liquid Lab</h4><p>Pour water, build ramps, explore different liquids, or stretch and tear slime.</p><span class="play">Play Liquid Lab <span aria-hidden="true">›</span></span></div>
+ <div class="preview" aria-hidden="true"><span class="wave"></span><span class="bubble one"></span><span class="bubble two"></span><span class="bubble three"></span><span class="label">FLUID PREVIEW</span></div>
 </a>
+<div class="section-line" style="margin-top:23px"><h3>Jump into a mode</h3><small>Inside Liquid Lab</small></div>
+<div class="modes">
+ <a class="mode" href="../liquid-lab/"><div class="mode-icon">🌊</div><div><strong>Simulator</strong><span>Pour, push, build ramps</span></div><span class="arrow">›</span></a>
+ <a class="mode" href="../liquid-lab/#templates"><div class="mode-icon">🧪</div><div><strong>Templates</strong><span>Honey, jelly, and more</span></div><span class="arrow">›</span></a>
+ <a class="mode" href="../liquid-lab/#slime"><div class="mode-icon">🟢</div><div><strong>Slime</strong><span>Two-finger stretching · Mobile</span></div><span class="arrow">›</span></a>
+</div>
+<footer>HTML GAME CENTER</footer>
 </main>
 </body>
 </html>
