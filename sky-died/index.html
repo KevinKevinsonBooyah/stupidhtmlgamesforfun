@@ -68,7 +68,7 @@ img,svg{-webkit-user-drag:none;user-drag:none}
  <canvas id="game" width="500" height="750" aria-label="Sky-died rooftop and falling game"></canvas>
  <div class="hud">
   <div class="left"><span class="chip">LEVEL <strong id="level">1</strong></span><span class="chip">❤️ <strong id="health">3</strong></span></div>
-  <div class="right"><span class="chip">⬇ <strong id="distance">0</strong>m</span><span class="chip" id="wind">WIND →</span></div>
+  <div class="right"><span class="chip">⬇ <strong id="distance">0</strong>m</span><span class="chip" id="speed-chip">SPEED <strong id="speed">0</strong></span><span class="chip" id="wind">WIND →</span></div>
  </div>
  <div class="progress"><div id="progress"></div></div>
  <div class="roof-caption" id="roof-caption">🏙️ ROOFTOP · 1,000+ METERS UP</div>
@@ -91,21 +91,58 @@ const $=s=>document.querySelector(s),c=$("#game"),g=c.getContext("2d",{alpha:fal
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n)),rand=(a,b)=>a+Math.random()*(b-a);
 const inputs={left:false,right:false,brake:false},keys=new Set();
 const ROOF_Y=220,ROOF_EDGE=222,SAFE_LEFT=145,SAFE_RIGHT=452;
-let level=1,groundY=12500,player=null,camY=-100,pillow=null,obstacles=[],pickups=[],specks=[],stars=[],clouds=[],state="roof",time=0,last=0,acc=0,invuln=0,shake=0,wind=0,landedTimer=0,score=0,buildingLights=[],citySeed=0,takeoff=0,flash=0,edgeWind=0,leapTicks=0;
+let level=1,groundY=12500,player=null,camY=-100,pillow=null,obstacles=[],pickups=[],specks=[],stars=[],clouds=[],state="roof",time=0,last=0,acc=0,invuln=0,shake=0,wind=0,landedTimer=0,score=0,buildingLights=[],citySeed=0,takeoff=0,flash=0,edgeWind=0,leapTicks=0,impactFlash=0,impactRings=[],debris=[],nearMisses=0;
 
 function circle(x,y,r,col){g.fillStyle=col;g.beginPath();g.arc(x,y,r,0,TAU);g.fill()}
 function spawnFX(x,y,col,n=18,force=1){
  for(let i=0;i<n;i++){const a=rand(0,TAU),v=rand(1,5)*force;specks.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-1,life:rand(20,45),col})}
- if(specks.length>170)specks.splice(0,specks.length-170);
+ if(specks.length>210)specks.splice(0,specks.length-210);
+}
+// Hazard-specific bursts are recycled and capped for mobile performance.
+function hazardImpact(o){
+ const color=o.type.includes("glass")?"#bcfbff":
+  o.type.includes("fan")||o.type==="drone"||o.type==="sideDrone"?"#9be6ff":
+  o.type==="bird"?"#ffdf9f":"#ffd2a5";
+ impactFlash=.92;
+ impactRings.push({x:player.x,y:player.y,r:9,life:1,color});
+ for(let k=0;k<24;k++){
+  const angle=rand(0,TAU),v=rand(2.2,8.5);
+  debris.push({x:player.x,y:player.y,vx:Math.cos(angle)*v,vy:Math.sin(angle)*v,
+   size:rand(2.2,5),turn:rand(-.2,.2),angle:rand(0,TAU),life:rand(19,37),color});
+ }
+ if(debris.length>110)debris.splice(0,debris.length-110);
+ spawnFX(player.x,player.y,color,26,1.5);
+}
+function hazardNearMiss(o){
+ if(o.close||o.hit)return;
+ o.close=true;nearMisses++;
+ const side=o.x>player.x?1:-1;
+ const x=(player.x+o.x)*.5;
+ impactRings.push({x,y:player.y,r:4,life:.55,color:"#c9f5ff"});
+ for(let k=0;k<7;k++)debris.push({x,y:player.y+rand(-7,7),vx:-side*rand(2,4),
+ vy:rand(-3,1),size:rand(1,2.5),turn:.12,angle:0,life:rand(12,24),color:"#d6f8ff"});
+ if(debris.length>110)debris.splice(0,debris.length-110);
+}
+function animateEffects(){
+ if(impactFlash>0)impactFlash=Math.max(0,impactFlash-.065);
+ for(let i=impactRings.length-1;i>=0;i--){
+  const ring=impactRings[i];ring.r+=5;ring.life-=.047;
+  if(ring.life<=0)impactRings.splice(i,1);
+ }
+ for(let i=debris.length-1;i>=0;i--){
+  const p=debris[i];p.x+=p.vx;p.y+=p.vy;p.vy+=.13;p.vx*=.988;p.angle+=p.turn;p.life--;
+  if(p.life<=0)debris.splice(i,1);
+ }
 }
 function generateLevel(n){
  level=n;
  // Roughly 1+ km of fall, increasing by hundreds of meters each level.
  groundY=12500+(n-1)*2800;camY=-110;
- obstacles=[];pickups=[];specks=[];stars=[];clouds=[];buildingLights=[];edgeWind=0;
+ obstacles=[];pickups=[];specks=[];stars=[];clouds=[];buildingLights=[];impactRings=[];debris=[];nearMisses=0;impactFlash=0;edgeWind=0;
  time=0;invuln=0;shake=0;landedTimer=0;flash=0;takeoff=0;citySeed=n;leapTicks=0;
  pillow={x:clamp(275+Math.sin(n*2.3)*75,170,375),w:172-(n>4?Math.min(30,(n-4)*4):0)};
  player={x:143,y:ROOF_Y-35,vx:0,vy:0,r:16,hp:6,spin:0,face:0};
+ $("#speed").textContent="0";
  wind=level===1?0:Math.sin(n*2.4)*(.03+.008*Math.min(level,9));
  const types=["bird","drone","sign","scaffold","antenna","kite","helicopter","crane","billboard","windowCleaner","balloon","fan","glass","beam"];
  let gap=Math.max(250,405-level*10),y=650,k=0;
@@ -126,6 +163,26 @@ function generateLevel(n){
    obstacles.push({type:types[(k*3+5)%types.length],x:x2,y:y+82,w:65,h:37,vx:rand(.45,1.4)*(k%2?1:-1),phase:rand(0,TAU),hit:false});
   }
   y+=gap+rand(-48,80);k++;
+ }
+ // Wall-mounted hazards alternate between both margins.
+ // They extend INTO the playable lanes, rather than living only in the middle.
+ // Each one warns the player before sliding out of its mount.
+ for(let j=0,sy=1130;sy<groundY-590;j++,sy+=Math.max(730,1000-level*24)){
+  const side=j%2===0?"right":"left";
+  const edgeX=side==="right"?SAFE_RIGHT-20:SAFE_LEFT+20;
+  let position=sy+rand(-55,55);
+  // Keep them staggered away from the main obstacles to preserve escape gaps.
+  for(let adjust=0;adjust<5&&obstacles.some(o=>Math.abs(o.y-position)<130);adjust++)position+=143;
+  if(position>=groundY-460)continue;
+  const kind=j%3===0?"sideFan":j%3===1?"sideDrone":"sideBanner";
+  obstacles.push({type:kind,side,wallMounted:true,x:edgeX,homeX:edgeX,y:position,
+   w:kind==="sideBanner"?64:kind==="sideDrone"?55:59,h:kind==="sideBanner"?67:42,
+   vx:0,phase:rand(0,TAU),hit:false,activated:false,close:false});
+  if(level>=4&&j%5===4){
+   const opposite=side==="right"?"left":"right",xx=opposite==="left"?SAFE_LEFT+20:SAFE_RIGHT-20;
+   obstacles.push({type:"sideDrone",side:opposite,wallMounted:true,x:xx,homeX:xx,
+    y:position+180,w:54,h:38,vx:0,phase:rand(0,TAU),hit:false,activated:false,close:false});
+  }
  }
  for(let y=1650;y<groundY-560;y+=2400){
   pickups.push({x:rand(218,394),y,r:16,used:false,phase:rand(0,TAU)});
@@ -193,7 +250,7 @@ function hit(o){
  if(invuln>0)return;
  invuln=145;player.hp--;$("#health").textContent=player.hp;
  player.vx+=(player.x>=o.x?5:-5);player.vy=Math.max(2,player.vy*.4);shake=10;
- spawnFX(player.x,player.y,"#ffe2a4",19,1.2);
+ hazardImpact(o);
  if(player.hp<=0){
   state="dead";dialog("💫","TOO MANY BONKS","That was not a soft landing. Try the jump again.","TRY AGAIN");
  }
@@ -215,6 +272,7 @@ function landing(){
 }
 function update(){
  time++;if(invuln>0)invuln--;if(shake>0)shake*=.83;if(flash>0)flash=Math.max(0,flash-.033);
+ animateEffects();
  if(state==="landed"){
   landedTimer--;
   for(const p of specks){p.x+=p.vx;p.y+=p.vy;p.vy+=.11;p.life--}
@@ -254,12 +312,29 @@ function update(){
  const ax=direction*.29+wind*(brake?.42:1)+edgeWind*(brake?.62:1);
 
  player.vx=clamp((player.vx+ax)*.971,-4.8,4.8);
- const maxSpeed=brake?3.9:9.2+Math.min(level,8)*.25;
- player.vy=clamp(player.vy+(brake?.035:.19),.9,maxSpeed);
+ // Terminal velocity rises with distance: freefall gets visibly faster
+ // as you descend. Braking always counters the acceleration.
+ const descent=clamp((player.y-ROOF_Y)/Math.max(1,groundY-ROOF_Y),0,1);
+ const speedLimit=7.2+Math.pow(descent,.72)*12.7+Math.min(level-1,8)*.38;
+ const maxSpeed=brake?4.2+descent*1.8:speedLimit;
+ const oldX=player.x,oldY=player.y;
+ player.vy=clamp(player.vy+(brake?.025:.20+descent*.14),1,maxSpeed);
  player.x+=player.vx;player.y+=player.vy;
  player.x=clamp(player.x,SAFE_LEFT,SAFE_RIGHT);
  if(player.x===SAFE_LEFT||player.x===SAFE_RIGHT)player.vx*=.15;
  player.spin+=player.vx*.007;player.spin*=.92;
+ $("#speed").textContent=Math.round(player.vy*6.3);
+ // Wall hazards first telegraph, then extend inward near the falling player.
+ for(const o of obstacles){
+  if(o.wallMounted){
+   const approach=o.y-player.y;
+   if(approach<440&&approach>-110)o.activated=true;
+   const inward=o.side==="right"?-1:1;
+   const reach=o.activated?Math.min(78,Math.max(0,(440-approach)*.25)):0;
+   const desired=o.homeX+inward*reach;
+   o.x+=(desired-o.x)*.09;
+  }
+ }
  // Wind-driven moving hazards become trickier on later skyscrapers.
  for(const o of obstacles){
   if(["bird","drone","kite","helicopter","balloon","glass"].includes(o.type)){
@@ -268,8 +343,20 @@ function update(){
     o.vx*=-1;o.x=clamp(o.x,SAFE_LEFT+o.w*.48,SAFE_RIGHT-o.w*.43);
    }
   }
-  if(Math.abs(o.y-player.y)>80)continue;
-  if(collideObstacle(o)&&!o.hit){o.hit=true;hit(o)}
+  if(Math.abs(o.y-player.y)>100)continue;
+  // Swept vertical hit test: at high speeds a person cannot pass through
+  // a thin platform or sign between simulation frames.
+  const dx=Math.min(Math.abs(player.x-o.x),Math.abs(oldX-o.x));
+  const sweptY=player.y>=oldY?
+   (oldY<=o.y+o.h*.43+player.r*.58&&player.y>=o.y-o.h*.43-player.r*.58):
+   (player.y<=o.y+o.h*.43+player.r*.58&&oldY>=o.y-o.h*.43-player.r*.58);
+  const crossing=dx<o.w*.46+player.r*.52&&sweptY;
+  if((collideObstacle(o)||crossing)&&!o.hit){
+   o.hit=true;hit(o);
+  }else if(!o.close&&!o.hit&&player.y>o.y+35&&oldY<o.y+90&&
+    Math.abs(player.x-o.x)<o.w*.48+player.r+29){
+   hazardNearMiss(o);
+  }
  }
  for(const p of pickups){
   if(p.used)continue;
@@ -441,7 +528,32 @@ function drawObstacle(o){
  if(y<-125||y>SH+125)return;
  g.save();g.translate(x,y);
  const bob=Math.sin(time*.055+o.phase);
- if(o.type==="bird"){
+ if(o.wallMounted){
+  g.save();
+  const mountedSide=o.side==="right"?1:-1,charge=.45+.55*Math.sin(time*.19+o.phase);
+  g.strokeStyle=o.type==="sideDrone"?"#a9f4ff":"#ffcb8a";
+  g.lineWidth=3;g.shadowColor=g.strokeStyle;g.shadowBlur=8+charge*8;
+  g.beginPath();g.arc(0,0,Math.max(o.w,o.h)*.37,0,TAU);g.stroke();
+  g.shadowBlur=0;
+  if(o.type==="sideFan"){
+   g.fillStyle="#344c64";g.beginPath();g.arc(0,0,20,0,TAU);g.fill();
+   g.save();g.rotate(time*.22);
+   g.fillStyle="#9ec7dd";
+   for(let i=0;i<4;i++){g.rotate(TAU/4);g.beginPath();g.ellipse(11,0,15,5,0,0,TAU);g.fill()}
+   g.restore();circle(0,0,5,"#e9fbff");
+  }else if(o.type==="sideDrone"){
+   g.fillStyle="#385e7c";g.fillRect(-20,-11,40,22);
+   g.fillStyle="#a1e5ff";g.fillRect(-10,-5,20,10);
+   g.strokeStyle="#e8fbff";g.lineWidth=3;g.beginPath();
+   g.moveTo(-32,-15);g.lineTo(-15,-15);g.moveTo(15,-15);g.lineTo(32,-15);g.stroke();
+  }else{
+   g.fillStyle="#e48d67";g.fillRect(-o.w*.5,-o.h*.5,o.w,o.h);
+   g.fillStyle="#ffe4bd";g.font="bold 11px system-ui";g.textAlign="center";
+   g.fillText("KEEP OUT",0,3);
+   g.strokeStyle="#ffdaa5";g.lineWidth=3;g.strokeRect(-o.w*.5,-o.h*.5,o.w,o.h);
+  }
+  g.restore();
+ }else if(o.type==="bird"){
   g.strokeStyle="#253d53";g.lineWidth=5;g.lineCap="round";
   const flap=Math.sin(time*.3+o.phase)*14;
   g.beginPath();g.moveTo(-24,-1);g.quadraticCurveTo(-13,flap,0,2);g.quadraticCurveTo(13,flap,24,-1);g.stroke();
@@ -535,7 +647,16 @@ function draw(){
  g.save();
  if(shake>1)g.translate(rand(-shake,shake)*.5,rand(-shake,shake)*.5);
  background();
- for(const o of obstacles)drawObstacle(o);
+ for(const o of obstacles){
+  if(o.wallMounted&&o.activated&&o.y-camY>-65&&o.y-camY<SH+120){
+   g.save();g.translate(o.homeX,o.y-camY);
+   g.strokeStyle=o.side==="right"?"#ffcc99":"#b6efff";
+   g.lineWidth=2.5;g.setLineDash([5,5]);g.beginPath();
+   g.moveTo(0,-o.h*.6);g.lineTo(0,o.h*.6);g.stroke();g.setLineDash([]);
+   g.restore();
+  }
+  drawObstacle(o);
+ }
  for(const p of pickups){
   if(p.used||p.y-camY<-35||p.y-camY>SH+35)continue;
   const sy=p.y-camY;
@@ -561,7 +682,36 @@ function draw(){
    g.fillStyle="#fffaff";g.font="bold 13px system-ui";g.fillText("↓ AIM HERE ↓",x,py-47);
   }
  }
- for(const p of specks){g.globalAlpha=clamp(p.life/35,0,1);circle(p.x,p.y-camY,3,p.col)}g.globalAlpha=1;
+ for(const p of specks){g.globalAlpha=clamp(p.life/35,0,1);circle(p.x,p.y-camY,3,p.col)}
+ g.globalAlpha=1;
+ for(const p of debris){
+  const sy=p.y-camY;
+  if(sy<-30||sy>SH+30)continue;
+  g.save();g.translate(p.x,sy);g.rotate(p.angle);
+  g.globalAlpha=clamp(p.life/25,0,1);g.fillStyle=p.color;
+  g.beginPath();g.moveTo(0,-p.size*1.6);g.lineTo(p.size,0);
+  g.lineTo(0,p.size*1.5);g.lineTo(-p.size,0);g.closePath();g.fill();
+  g.restore();
+ }
+ for(const ring of impactRings){
+  const sy=ring.y-camY;
+  if(sy<-120||sy>SH+120)continue;
+  g.save();g.globalAlpha=ring.life;g.strokeStyle=ring.color;g.lineWidth=1+ring.life*3;
+  g.shadowColor=ring.color;g.shadowBlur=8;
+  g.beginPath();g.arc(ring.x,sy,ring.r,0,TAU);g.stroke();g.restore();
+ }
+ if(state==="falling"&&invuln>0&&impactFlash>.02){
+  const px=player.x,py=player.y-camY;
+  g.save();g.globalAlpha=impactFlash;
+  g.strokeStyle="#ffffff";g.lineWidth=2.5;
+  for(let i=0;i<7;i++){
+   const angle=i*TAU/7+time*.09;
+   const r=29+Math.sin(time*.35+i)*3;
+   g.beginPath();g.moveTo(px+Math.cos(angle)*r,py+Math.sin(angle)*r);
+   g.lineTo(px+Math.cos(angle)*(r+12),py+Math.sin(angle)*(r+12));g.stroke();
+  }
+  g.restore();
+ }
  if(state==="roof"||takeoff>0)drawRooftop();
  if(player)drawPerson();
  if(state==="falling"&&Math.abs(edgeWind)>.2){
@@ -584,8 +734,10 @@ function draw(){
   }
  }
  if(flash>0){
-  g.fillStyle="rgba(220,249,255,"+(flash*.23)+")";
-  g.fillRect(0,0,SW,SH);
+  g.fillStyle="rgba(220,249,255,"+(flash*.23)+")";g.fillRect(0,0,SW,SH);
+ }
+ if(impactFlash>0){
+  g.fillStyle="rgba(255,180,135,"+(impactFlash*.23)+")";g.fillRect(0,0,SW,SH);
  }
  g.restore();
 }
