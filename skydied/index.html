@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#152c44"><meta name="description" content="Skydied: dodge obstacles while falling from a skyscraper and aim for a pillow.">
+<meta name="theme-color" content="#152c44"><meta name="description" content="Sky-died: stand on a skyscraper rooftop, jump, dodge hazards and land on a pillow.">
 <title>Sky-died | HTML GAME CENTER</title><link rel="icon" href="../hub-dog-icon.png">
 <style>
 :root{color-scheme:dark;--ink:#eaf8ff;--panel:#163b58;--edge:#467d9b;--soft:#badbec}
@@ -181,6 +181,9 @@ function hit(o){
  }
 }
 function landing(){
+ // Snap camera to the landing zone before stopping the fall loop,
+ // so a very fast descent still shows the giant pillow and impact.
+ camY=clamp(groundY-SH+105,-115,groundY-SH+110);
  const safe=Math.abs(player.x-pillow.x)<pillow.w*.5+8;
  if(safe&&player.hp>0){
   state="landed";landedTimer=70;
