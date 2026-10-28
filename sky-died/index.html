@@ -51,6 +51,12 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:500/750;touch-action:no
 @keyframes jumpPulse{0%,100%{box-shadow:0 6px 22px #021b4180}50%{box-shadow:0 3px 35px #b1f4ff96}}
 @media(max-width:540px){.rooftop-jump{min-width:165px;padding:13px 17px;font-size:14px;bottom:12px;min-height:50px}.roof-caption{bottom:77px;font-size:9px;padding:7px 9px}}
 @media(prefers-reduced-motion:reduce){.rooftop-jump{animation:none}}
+
+html,body,body *,body *::before,body *::after{
+ -webkit-user-select:none!important;user-select:none!important;
+ -webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+}
+img,svg{-webkit-user-drag:none;user-drag:none}
 </style>
 </head>
 <body>
@@ -84,8 +90,8 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:500/750;touch-action:no
 const $=s=>document.querySelector(s),c=$("#game"),g=c.getContext("2d",{alpha:false}),SW=500,SH=750,TAU=Math.PI*2;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n)),rand=(a,b)=>a+Math.random()*(b-a);
 const inputs={left:false,right:false,brake:false},keys=new Set();
-const ROOF_Y=220;
-let level=1,groundY=12500,player=null,camY=-100,pillow=null,obstacles=[],specks=[],stars=[],clouds=[],state="roof",time=0,last=0,acc=0,invuln=0,shake=0,wind=0,landedTimer=0,score=0,buildingLights=[],citySeed=0,takeoff=0,flash=0;
+const ROOF_Y=220,ROOF_EDGE=222,SAFE_LEFT=145,SAFE_RIGHT=452;
+let level=1,groundY=12500,player=null,camY=-100,pillow=null,obstacles=[],pickups=[],specks=[],stars=[],clouds=[],state="roof",time=0,last=0,acc=0,invuln=0,shake=0,wind=0,landedTimer=0,score=0,buildingLights=[],citySeed=0,takeoff=0,flash=0,edgeWind=0;
 
 function circle(x,y,r,col){g.fillStyle=col;g.beginPath();g.arc(x,y,r,0,TAU);g.fill()}
 function spawnFX(x,y,col,n=18,force=1){
@@ -96,24 +102,33 @@ function generateLevel(n){
  level=n;
  // Roughly 1+ km of fall, increasing by hundreds of meters each level.
  groundY=12500+(n-1)*2800;camY=-110;
- obstacles=[];specks=[];stars=[];clouds=[];buildingLights=[];
+ obstacles=[];pickups=[];specks=[];stars=[];clouds=[];buildingLights=[];edgeWind=0;
  time=0;invuln=0;shake=0;landedTimer=0;flash=0;takeoff=0;citySeed=n;
- pillow={x:clamp(250+Math.sin(n*2.3)*95,150,350),w:120-(n>4?Math.min(22,n*2):0)};
- player={x:250,y:ROOF_Y-35,vx:0,vy:0,r:16,hp:3,spin:0,face:0};
- wind=level===1?0:Math.sin(n*2.4)*(.045+.018*Math.min(level,9));
+ pillow={x:clamp(275+Math.sin(n*2.3)*75,170,375),w:172-(n>4?Math.min(30,(n-4)*4):0)};
+ player={x:143,y:ROOF_Y-35,vx:0,vy:0,r:16,hp:5,spin:0,face:0};
+ wind=level===1?0:Math.sin(n*2.4)*(.03+.008*Math.min(level,9));
  const types=["bird","drone","sign","scaffold","antenna","kite","helicopter","crane","billboard","windowCleaner","balloon","fan","glass","beam"];
- let gap=Math.max(162,285-level*9),y=560,k=0;
+ let gap=Math.max(230,385-level*10),y=650,k=0;
  while(y<groundY-300){
   const type=types[(k*7+Math.floor(rand(0,types.length)))%types.length];
   const size=type==="crane"?160:type==="billboard"?136:type==="scaffold"?123:type==="helicopter"?120:type==="sign"?96:type==="beam"?114:type==="windowCleaner"?94: type==="fan"?80: type==="antenna"?85:49;
   const h=type==="crane"?28:type==="billboard"?70:type==="sign"?54:type==="windowCleaner"?30:type==="scaffold"?27:type==="beam"?22:39;
-  const x=rand(120,380);
-  obstacles.push({type,x:clamp(x,81+size*.5,419-size*.5),y,w:size,h,vx:rand(.5,1.7)*(k%2?-1:1),phase:rand(0,TAU),hit:false});
+  const x=rand(165,423);
+  obstacles.push({type,x:clamp(x,SAFE_LEFT+size*.48,SAFE_RIGHT-size*.45),y,w:size,h,vx:rand(.45,1.3)*(k%2?-1:1),phase:rand(0,TAU),hit:false});
+  // A predictable sweeping hazard crosses the easy far-right escape lane.
+  // Side lanes are unsafe to camp, but wide gaps remain between waves.
+  if(k%5===3){
+   obstacles.push({type:k%2?"drone":"fan",x:426,y:y+165,w:66,h:35,
+    vx:-1.65-level*.03,phase:rand(0,TAU),hit:false,edgeSweep:true});
+  }
   if(level>=3&&k%4===2){
-   const x2=x>250?112:388;
+   const x2=x>290?170:420;
    obstacles.push({type:types[(k*3+5)%types.length],x:x2,y:y+82,w:65,h:37,vx:rand(.45,1.4)*(k%2?1:-1),phase:rand(0,TAU),hit:false});
   }
   y+=gap+rand(-48,80);k++;
+ }
+ for(let y=1650;y<groundY-560;y+=2400){
+  pickups.push({x:rand(218,394),y,r:16,used:false,phase:rand(0,TAU)});
  }
  for(let i=0;i<115;i++)clouds.push({x:rand(30,470),y:rand(80,groundY),radius:rand(25,105),shade:Math.random(),depth:rand(.2,.65)});
  for(let i=0;i<26;i++)buildingLights.push({x:rand(10,490),y:rand(150,groundY),r:rand(1,4),shade:Math.random()});
@@ -131,7 +146,8 @@ function generateLevel(n){
 function jump(){
  if(state!=="roof")return;
  state="falling";
- player.vy=2.8;player.y=ROOF_Y-35;takeoff=35;shake=5;flash=.7;
+ player.vy=2.2;player.x=ROOF_EDGE+30;player.vx=2.6;player.y=ROOF_Y-38;
+ takeoff=35;shake=5;flash=.7;
  $("#jump").hidden=true;$("#roof-caption").hidden=true;
  spawnFX(player.x,ROOF_Y,"#d8f7ff",24,1.1);
  last=0;acc=0;
@@ -169,11 +185,11 @@ function steer(){return (inputs.right||keys.has("d")||keys.has("arrowright")?1:0
 function braking(){return inputs.brake||keys.has(" ")||keys.has("arrowdown")||keys.has("s")}
 function collideObstacle(o){
  const dx=Math.abs(player.x-o.x),dy=Math.abs(player.y-o.y);
- return dx<o.w*.5+player.r*.68&&dy<o.h*.5+player.r*.8;
+ return dx<o.w*.46+player.r*.52&&dy<o.h*.42+player.r*.58;
 }
 function hit(o){
  if(invuln>0)return;
- invuln=63;player.hp--;$("#health").textContent=player.hp;
+ invuln=123;player.hp--;$("#health").textContent=player.hp;
  player.vx+=(player.x>=o.x?5:-5);player.vy=Math.max(2,player.vy*.4);shake=10;
  spawnFX(player.x,player.y,"#ffe2a4",19,1.2);
  if(player.hp<=0){
@@ -184,7 +200,7 @@ function landing(){
  // Snap camera to the landing zone before stopping the fall loop,
  // so a very fast descent still shows the giant pillow and impact.
  camY=clamp(groundY-SH+105,-115,groundY-SH+110);
- const safe=Math.abs(player.x-pillow.x)<pillow.w*.5+8;
+ const safe=Math.abs(player.x-pillow.x)<pillow.w*.52+18;
  if(safe&&player.hp>0){
   state="landed";landedTimer=70;
   player.y=groundY-33;player.vy=0;player.vx=0;
@@ -205,7 +221,7 @@ function update(){
  }
  if(state==="roof"){
   const direction=steer();
-  player.x=clamp(player.x+direction*3.15,108,392);
+  player.x=clamp(player.x+direction*2.9,72,ROOF_EDGE-22);
   player.spin=Math.sin(time*.065)*.015;
   camY=-110;
   return;
@@ -213,22 +229,39 @@ function update(){
  if(state!=="falling")return;
  if(takeoff>0)takeoff--;
  const direction=steer(),brake=braking();
- const ax=direction*.29+wind*(brake?.42:1);
+ // Airflow strengthens near the walls: holding right no longer creates
+ // a completely safe strategy, but gusts do not cause damage.
+ const rightPressure=clamp((player.x-386)/56,0,1);
+ const leftPressure=clamp((188-player.x)/52,0,1);
+ edgeWind=-rightPressure*(.37+rightPressure*.16)+leftPressure*.45;
+ const ax=direction*.29+wind*(brake?.42:1)+edgeWind*(brake?.62:1);
+
  player.vx=clamp((player.vx+ax)*.971,-4.8,4.8);
- const maxSpeed=brake?4.8:10.7+Math.min(level,9)*.4;
+ const maxSpeed=brake?3.9:9.2+Math.min(level,8)*.25;
  player.vy=clamp(player.vy+(brake?.035:.19),.9,maxSpeed);
  player.x+=player.vx;player.y+=player.vy;
- player.x=clamp(player.x,70,430);
- if(player.x===70||player.x===430)player.vx*=.15;
+ player.x=clamp(player.x,SAFE_LEFT,SAFE_RIGHT);
+ if(player.x===SAFE_LEFT||player.x===SAFE_RIGHT)player.vx*=.15;
  player.spin+=player.vx*.007;player.spin*=.92;
  // Wind-driven moving hazards become trickier on later skyscrapers.
  for(const o of obstacles){
   if(["bird","drone","kite","helicopter","balloon","glass"].includes(o.type)){
    o.x+=o.vx*(.75+level*.055)*(o.type==="helicopter"?.75:1);
-   if(o.x<80+o.w/2||o.x>420-o.w/2){o.vx*=-1;o.x=clamp(o.x,80+o.w/2,420-o.w/2)}
+   if(o.x<SAFE_LEFT+o.w*.48||o.x>SAFE_RIGHT-o.w*.43){
+    o.vx*=-1;o.x=clamp(o.x,SAFE_LEFT+o.w*.48,SAFE_RIGHT-o.w*.43);
+   }
   }
   if(Math.abs(o.y-player.y)>80)continue;
   if(collideObstacle(o)&&!o.hit){o.hit=true;hit(o)}
+ }
+ for(const p of pickups){
+  if(p.used)continue;
+  if(Math.abs(p.y-player.y)<player.r+p.r+12&&Math.hypot(p.x-player.x,p.y-player.y)<player.r+p.r+14){
+   p.used=true;
+   if(player.hp<5){player.hp++;$("#health").textContent=player.hp}
+   else score+=35;
+   spawnFX(p.x,p.y,"#a7ffe8",24,1.1);
+  }
  }
  if(player.y>=groundY-38&&state==="falling")landing();
  for(let i=specks.length-1;i>=0;i--){const p=specks[i];p.x+=p.vx;p.y+=p.vy;p.vy+=.07;p.life--;if(p.life<=0)specks.splice(i,1)}
@@ -236,6 +269,8 @@ function update(){
  const target=clamp(player.y-235,-115,Math.max(-115,groundY-SH+110));
  camY+=(target-camY)*.13;
  $("#distance").textContent=Math.max(0,Math.ceil((groundY-player.y)/10));
+ $("#wind").textContent=Math.abs(edgeWind)>.16?(edgeWind<0?"GUST ←":"GUST →"):
+  Math.abs(wind)<.01?"CALM":wind>0?"WIND →":"← WIND";
  $("#progress").style.width=(clamp(player.y/groundY*100,0,100)).toFixed(1)+"%";
 }
 function cloud(x,y,r,alpha){
@@ -459,6 +494,16 @@ function draw(){
  if(shake>1)g.translate(rand(-shake,shake)*.5,rand(-shake,shake)*.5);
  background();
  for(const o of obstacles)drawObstacle(o);
+ for(const p of pickups){
+  if(p.used||p.y-camY<-35||p.y-camY>SH+35)continue;
+  const sy=p.y-camY;
+  g.save();g.translate(p.x,sy+Math.sin(time*.08+p.phase)*4);
+  g.shadowColor="#a2ffd7";g.shadowBlur=18;
+  circle(0,0,19,"#246d7199");circle(0,0,14,"#b8ffe9");
+  g.shadowBlur=0;g.fillStyle="#377b74";g.fillRect(-3,-9,6,18);g.fillRect(-9,-3,18,6);
+  g.restore();
+ }
+
  const ground=groundY-camY;
  if(ground<SH+120){
   g.fillStyle="#395b63";g.fillRect(0,ground,SW,SH-ground+20);
@@ -477,6 +522,18 @@ function draw(){
  for(const p of specks){g.globalAlpha=clamp(p.life/35,0,1);circle(p.x,p.y-camY,3,p.col)}g.globalAlpha=1;
  if(state==="roof"||takeoff>0)drawRooftop();
  if(player)drawPerson();
+ if(state==="falling"&&Math.abs(edgeWind)>.2){
+  g.save();g.globalAlpha=.35+Math.abs(edgeWind)*.7;
+  g.strokeStyle="#d6fbff";g.lineWidth=2;
+  const x=edgeWind<0?SW-44:145;
+  for(let i=0;i<3;i++){
+   const y=140+i*55+(time*1.3%28);
+   const dir=edgeWind<0?-1:1;
+   g.beginPath();g.moveTo(x,y);g.lineTo(x+dir*23,y);
+   g.lineTo(x+dir*15,y-7);g.moveTo(x+dir*23,y);g.lineTo(x+dir*15,y+7);g.stroke();
+  }
+  g.restore();
+ }
  if(state==="falling"&&ground>SH+120){
   const rel=Math.max(0,groundY-player.y);
   if(rel<900){
