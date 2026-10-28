@@ -84,7 +84,7 @@ img,svg{-webkit-user-drag:none;user-drag:none}
 <div class="overlay-panel">
 <div class="overlay-icon" id="overlay-icon">🧟</div>
 <h2 id="overlay-title">THE INFECTION</h2>
-<p id="overlay-desc">Break out of the lab. Walk into humans to infect them. Infected humans join your horde. Guards start fighting back in Level 3.</p>
+<p id="overlay-desc">Break out of the lab. Stay close enough to bite humans and build a horde. Guards arrive in Level 2, and security can call reinforcements.</p>
 <button class="primary" id="play">BEGIN OUTBREAK</button>
 </div>
 </div>
@@ -357,7 +357,9 @@ function input(){
 function infected(h){
  h.alive=false;score+=h.role==="elite"?65:h.guard?35:h.role==="medic"||h.role==="technician"?25:10;
  particle(h.x,h.y,"#aaffaa",20);
- allies.push({x:h.x,y:h.y,vx:0,vy:0,face:0,dir:0,r:13,path:[],goal:null,repath:0,stuck:0,role:h.role,biteReady:0});
+ const allyHP=h.role==="elite"?5:h.guard?4:2;
+ allies.push({x:h.x,y:h.y,vx:0,vy:0,face:0,dir:0,r:13,path:[],goal:null,
+ repath:0,stuck:0,role:h.role,biteReady:0,hp:allyHP,maxHp:allyHP});
  hud();
 }
 function summonBackup(){
@@ -554,7 +556,20 @@ function update(){
  }
  for(let i=bullets.length-1;i>=0;i--){
   const b=bullets[i];b.x+=b.vx;b.y+=b.vy;b.life--;
-  if(Math.hypot(b.x-player.x,b.y-player.y)<player.r+4){bullets.splice(i,1);hurt();continue}
+  if(Math.hypot(b.x-player.x,b.y-player.y)<player.r+4){
+   bullets.splice(i,1);hurt();continue;
+  }
+  let intercepted=false;
+  for(let j=allies.length-1;j>=0;j--){
+   const a=allies[j];
+   if(Math.hypot(b.x-a.x,b.y-a.y)<a.r+4){
+    a.hp--;intercepted=true;
+    particle(a.x,a.y,"#a9f4bb",a.hp>0?5:18);
+    if(a.hp<=0)allies.splice(j,1);
+    break;
+   }
+  }
+  if(intercepted){bullets.splice(i,1);continue}
   if(b.life<=0||pointBlocked(b.x,b.y,3)){bullets.splice(i,1);continue}
  }
  updateAlarm();
@@ -789,6 +804,10 @@ function drawZombie(z,leader=false){
   ctx.lineWidth=2.3;ctx.beginPath();ctx.arc(0,0,21+Math.sin(time*.08)*.9,0,TAU);ctx.stroke();
  }
  ctx.restore();
+ if(!leader&&z.maxHp&&z.hp<z.maxHp){
+  ctx.fillStyle="#1a3328";ctx.fillRect(x-13,y+19,26,3);
+  ctx.fillStyle="#9dffc3";ctx.fillRect(x-13,y+19,26*Math.max(0,z.hp)/z.maxHp,3);
+ }
 }
 function draw(){
  const rect=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,1.7);
