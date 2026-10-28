@@ -158,6 +158,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
  .templates-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
  .template-card small{font-size:10px}
 }
+@media(max-width:600px) and (pointer:fine){.mobile-mode{display:none}}
 </style>
 </head>
 <body>
@@ -746,6 +747,9 @@ function showSection(section,changeUrl=true){
   element.setAttribute("aria-pressed",String(mode===section));
  }
  if(slime&&!slimeLoaded){slimeFrame.src="./slime.html?embed=1";slimeLoaded=true}
+ if(slimeLoaded&&slimeFrame.contentWindow){
+  slimeFrame.contentWindow.postMessage({type:"liquid-lab:slime-active",active:slime},window.location.origin);
+ }
  if(!slime){liquidDirty=true;remaining=0}
  if(changeUrl&&window.history&&window.history.replaceState){
   const fragment=section==="sim"?"":"#"+section;
@@ -755,6 +759,11 @@ function showSection(section,changeUrl=true){
 $("#nav-sim").addEventListener("click",()=>showSection("sim"));
 $("#nav-templates").addEventListener("click",()=>showSection("templates"));
 $("#nav-slime").addEventListener("click",()=>showSection("slime"));
+slimeFrame.addEventListener("load",()=>{
+ if(slimeFrame.contentWindow)slimeFrame.contentWindow.postMessage({
+  type:"liquid-lab:slime-active",active:!$("#slime-view").hidden
+ },window.location.origin);
+});
 window.addEventListener("message",event=>{
  if(event.origin!==window.location.origin||event.source!==slimeFrame.contentWindow)return;
  const data=event.data;
