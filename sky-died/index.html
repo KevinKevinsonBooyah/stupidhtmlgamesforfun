@@ -312,34 +312,40 @@ function background(){
    }
   }
  }
- // The kilometer-long skyscraper sides scroll past continuously.
- for(const side of [0,1]){
-  const left=side===0;
-  const bx=left?0:432,bw=68;
-  const outer=g.createLinearGradient(bx,0,bx+bw,0);
-  if(left){outer.addColorStop(0,"#182b48");outer.addColorStop(.67,"#324f70");outer.addColorStop(1,"#6397bb")}
-  else{outer.addColorStop(0,"#5d95b7");outer.addColorStop(.27,"#2d4c70");outer.addColorStop(1,"#152941")}
-  g.fillStyle=outer;g.fillRect(bx,0,bw,SH);
-  g.fillStyle="#c4eeff86";g.fillRect(left?63:434,0,3,SH);
-  g.fillStyle="#0c213554";g.fillRect(left?9:481,0,5,SH);
-  const offset=Math.floor(camY/63)*63;
-  for(let y=offset;y<=camY+SH+80;y+=63){
-   const sy=y-camY;
-   g.fillStyle="#ffffff0f";g.fillRect(bx+6,sy+5,bw-12,1);
-   const floorNo=Math.floor(y/63);
-   for(let x=bx+12;x<bx+bw-11;x+=24){
-    g.fillStyle=(floorNo*7+Math.floor(x/19))%8===0?"#ffe8a58c":"#86d3ee59";
-    g.fillRect(x,sy+11,15,32);
-    g.fillStyle="#d8f7ff42";g.fillRect(x,sy+11,2,27);
-   }
-   if(floorNo%9===0){
-    g.fillStyle="#c8d8e6";g.fillRect(bx,sy+52,bw,6);
-    g.fillStyle="#7999b5";g.fillRect(bx+5,sy+43,bw-10,9);
-   }
-   if(floorNo%19===0){
-    g.fillStyle="#ffb27f";g.fillRect(bx+4,sy+48,bw-8,4);
-   }
+ // Side-on composition: the tower stays on the LEFT, while open air fills
+ // the right side of the screen. Its windows stream upward as you fall.
+ const towerRight=139;
+ const facade=g.createLinearGradient(0,0,towerRight,0);
+ facade.addColorStop(0,"#13253f");facade.addColorStop(.54,"#294b69");
+ facade.addColorStop(.88,"#537895");facade.addColorStop(1,"#90bad0");
+ g.fillStyle=facade;g.fillRect(0,0,towerRight,SH);
+ g.fillStyle="#d5f4ff96";g.fillRect(towerRight-4,0,4,SH);
+ g.fillStyle="#0b1e3440";g.fillRect(0,0,8,SH);
+ const windowOffset=Math.floor(camY/58)*58;
+ for(let y=windowOffset;y<camY+SH+67;y+=58){
+  const sy=y-camY,floorNo=Math.floor(y/58);
+  g.fillStyle="#c6e8f819";g.fillRect(0,sy+1,towerRight,3);
+  for(let x=14;x<towerRight-17;x+=29){
+   g.fillStyle=(floorNo*5+x)%11<3?"#ffe5a48b":"#7dcced63";
+   g.fillRect(x,sy+12,20,28);
+   g.fillStyle="#f0ffff33";g.fillRect(x+3,sy+13,3,22);
+   g.fillStyle="#213f5933";g.fillRect(x,sy+31,20,7);
   }
+  if(floorNo%9===0){
+   g.fillStyle="#d1e5ed";g.fillRect(0,sy+47,towerRight+6,6);
+   g.fillStyle="#46677c";g.fillRect(0,sy+42,towerRight,6);
+  }
+  if(floorNo%15===0){
+   g.fillStyle="#ffb36f";g.fillRect(7,sy+40,towerRight-8,3);
+  }
+ }
+ // Beveled outside edge for a readable 3D wall silhouette.
+ g.fillStyle="#94c6d0a3";
+ g.beginPath();g.moveTo(towerRight-14,0);g.lineTo(towerRight+3,0);
+ g.lineTo(towerRight+3,SH);g.lineTo(towerRight-14,SH);g.closePath();g.fill();
+ g.fillStyle="#1a40558c";
+ for(let y=windowOffset;y<camY+SH+67;y+=58){
+  g.fillRect(towerRight-13,y-camY+13,9,29);
  }
  for(const cloud of clouds){
   const sy=cloud.y-camY*(.15+cloud.depth*.55);
@@ -365,33 +371,52 @@ function background(){
 }
 function drawRooftop(){
  const y=ROOF_Y-camY;
- if(y<-65||y>SH+90)return;
+ if(y<-95||y>SH+120)return;
  g.save();
- const alpha=state==="roof"?1:clamp(takeoff/28,0,1);
+ const alpha=state==="roof"?1:clamp(takeoff/30,0,1);
  g.globalAlpha=alpha;
- const shade=g.createLinearGradient(0,y-25,0,y+250);
- shade.addColorStop(0,"#8599a4");shade.addColorStop(.16,"#405c6b");shade.addColorStop(1,"#122c46");
- g.fillStyle=shade;g.fillRect(70,y,360,SH-y+180);
- g.fillStyle="#1e3d52";g.fillRect(70,y-25,360,24);
- g.fillStyle="#d9e8e8";g.fillRect(74,y-29,352,5);
- g.fillStyle="#92b8c5";g.fillRect(70,y-8,360,5);
- g.fillStyle="#9cb8c0";g.fillRect(82,y+13,336,18);
- g.strokeStyle="#5d7b8d";g.lineWidth=3;g.strokeRect(82,y+15,336,30);
- for(let x=83;x<418;x+=48){
-  g.fillStyle="#0c3045";g.fillRect(x,y+50,38,16);
-  g.fillStyle="#deebee";g.fillRect(x+6,y+53,23,3);
+ // Perspective roof occupies LEFT of the scene. Beyond the far edge is sky.
+ const side=g.createLinearGradient(0,y,ROOF_EDGE,y+100);
+ side.addColorStop(0,"#1d394e");
+ side.addColorStop(.7,"#2d5369");
+ side.addColorStop(1,"#486b77");
+ g.fillStyle=side;
+ g.beginPath();g.moveTo(-40,y);g.lineTo(ROOF_EDGE,y);
+ g.lineTo(ROOF_EDGE-22,SH+130);g.lineTo(-40,SH+130);g.closePath();g.fill();
+ // Rooftop seen from the side, with a slightly angled upper surface.
+ g.fillStyle="#8da7ae";
+ g.beginPath();g.moveTo(0,y-24);g.lineTo(ROOF_EDGE-17,y-23);
+ g.lineTo(ROOF_EDGE+7,y+2);g.lineTo(0,y+4);g.closePath();g.fill();
+ g.fillStyle="#3d5d70";
+ g.beginPath();g.moveTo(0,y-19);g.lineTo(ROOF_EDGE-21,y-19);
+ g.lineTo(ROOF_EDGE,y-1);g.lineTo(0,y-2);g.closePath();g.fill();
+ g.fillStyle="#e4f3f2";g.fillRect(0,y-1,ROOF_EDGE+4,5);
+ g.fillStyle="#213d56";g.fillRect(ROOF_EDGE-9,y-20,13,41);
+ g.fillStyle="#b9e9ea";g.fillRect(ROOF_EDGE-10,y-24,15,5);
+ // Caution marking on the cliff edge.
+ g.fillStyle="#ffcf76";
+ for(let i=0;i<3;i++)g.fillRect(ROOF_EDGE-32+i*7,y-16,4,12);
+ // Small rooftop air-conditioning units and pipes.
+ for(const [x,w] of [[21,34],[72,30]]){
+  g.fillStyle="#344c5d";g.fillRect(x,y-45,w,23);
+  g.fillStyle="#a0bfca";g.fillRect(x-3,y-48,w+6,6);
+  g.fillStyle="#203848";g.fillRect(x+8,y-39,w-15,12);
+  g.strokeStyle="#91b5c1";g.lineWidth=1.5;g.strokeRect(x+8,y-39,w-15,12);
+  g.fillStyle="#c5e8ec";g.fillRect(x+14,y-34,6,2);
  }
- // Heli-pad and rooftop ventilation make the starting position unmistakable.
- g.fillStyle="#d4ece4";g.beginPath();g.ellipse(250,y-22,92,32,0,0,TAU);g.fill();
- g.fillStyle="#506775";g.beginPath();g.ellipse(250,y-22,86,27,0,0,TAU);g.fill();
- g.fillStyle="#c6e9e8";g.font="900 25px system-ui";g.textAlign="center";g.fillText("H",250,y-12);
- for(const x of [97,377]){
-  g.fillStyle="#728d96";g.fillRect(x,y-50,26,25);
-  g.fillStyle="#d2e7e2";g.fillRect(x-4,y-57,34,9);
-  g.strokeStyle="#375769";g.lineWidth=3;
-  g.beginPath();g.moveTo(x+4,y-55);g.lineTo(x+4,y-22);g.moveTo(x+19,y-55);g.lineTo(x+19,y-22);g.stroke();
+ g.strokeStyle="#a4c8d3";g.lineWidth=3;
+ g.beginPath();g.moveTo(29,y-48);g.lineTo(29,y-66);g.lineTo(60,y-66);g.lineTo(60,y-49);g.stroke();
+ // Tower side glass and supports continue a long way below your feet.
+ for(let row=0;row<9;row++){
+  const yy=y+26+row*68;
+  if(yy>SH+80)break;
+  g.fillStyle="#74bad2a1";g.fillRect(19,yy,23,40);
+  g.fillRect(68,yy,24,40);g.fillRect(122,yy,23,40);
+  g.fillStyle="#e3f5fa50";g.fillRect(22,yy+3,3,28);
+  g.fillStyle="#273c52";g.fillRect(0,yy+49,ROOF_EDGE-15,8);
  }
- g.fillStyle="#ffc97c";g.font="800 12px system-ui";g.fillText("AUTHORIZED PERSONNEL ONLY",250,y+87);
+ g.fillStyle="#ffcd79";g.font="800 10px system-ui";g.textAlign="left";
+ g.fillText("EDGE →",ROOF_EDGE-68,y-43);
  g.restore();
 }
 function drawObstacle(o){
