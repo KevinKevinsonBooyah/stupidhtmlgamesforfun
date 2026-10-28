@@ -78,7 +78,7 @@ img,svg{-webkit-user-drag:none;user-drag:none}
 <canvas id="game" width="900" height="570" aria-label="Top-down zombie infection game"></canvas>
 <div class="hud">
  <div class="chip">LEVEL <strong id="level">1</strong> · <span id="remaining">4 HUMANS</span></div>
- <div class="chip right">❤️ <strong id="health">5</strong> <span id="hint">· INFECT ALL</span></div>
+ <div class="chip right">❤️ <strong id="health">5</strong> <span id="hint">· INFECT ALL</span></div><div class="chip security" id="security-chip" hidden>🚨 <strong id="security">0%</strong></div>
 </div>
 <div class="overlay" id="overlay">
 <div class="overlay-panel">
@@ -107,7 +107,9 @@ const rand=(a,b)=>a+Math.random()*(b-a);
 const circle=(x,y,r,fill)=>{ctx.fillStyle=fill;ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill()};
 const keys=new Set(),joy={x:0,y:0,active:false,pointer:null},particles=[];
 let level=1,worldW=1000,worldH=650,walls=[],humans=[],allies=[],bullets=[],traps=[],decor=[],navGrid=null,navCols=0,navRows=0,player=null,exit=null,cam={x:0,y:0},state="menu",dashReady=0,invuln=0,time=0,last=0,acc=0,screenShake=0,score=0;
-const NAV=42;let alarms=0;
+const NAV=42;
+let alarms=0,alarmMeter=0,securityWaves=0,noticeTimer=0,alarmNoticed=false,backupTotal=0;
+const maxBackupWaves=()=>level<2?0:Math.min(3,1+Math.floor((level-2)/3));
 const hud=()=>{$("#level").textContent=level;$("#remaining").textContent=humans.filter(h=>h.alive).length+" HUMANS";$("#health").textContent=player?player.hp:5;$("#hint").textContent=humans.some(h=>h.alive)?"· INFECT ALL":"· EXIT OPEN"};
 function particle(x,y,shade,n=12){
  for(let i=0;i<n;i++){let a=rand(0,TAU),v=rand(1.1,4);
@@ -254,7 +256,9 @@ function navigate(entity,destination,speed){
 function newLevel(n){
  level=n;worldW=990+(n-1)*155;worldH=635+(n-1)*115;
  walls=[];decor=[];humans=[];allies=[];bullets=[];traps=[];particles.length=0;
- screenShake=0;invuln=70;dashReady=0;alarms=0;
+ screenShake=0;invuln=70;dashReady=0;alarms=0;alarmMeter=0;securityWaves=0;
+ noticeTimer=0;alarmNoticed=false;backupTotal=0;
+ $("#security-chip").hidden=level<2;$("#security").textContent="0%";
  player={x:77,y:worldH*.5,r:16,hp:5,maxHp:5,face:0,vx:0,vy:0,slow:0};
  exit={x:worldW-63,y:worldH*.5,w:38,h:93};
  const columns=Math.ceil(worldW/190),rows=Math.ceil(worldH/154);
@@ -285,14 +289,14 @@ function newLevel(n){
   decor.push({x:worldW-34,y:120+i*270,kind:"light"});
  }
  makeNavigation();
- const count=Math.min(26,4+level*2);
- const guardCount=level>=3?Math.min(6,1+Math.floor((level-3)/2)):0;
+ const count=Math.min(30,4+level*2+Math.max(0,level-2)*2);
+ const guardCount=level>=2?Math.min(8,level-1+Math.floor((level-1)/2)):0;
  for(let k=0;k<count;k++){
   const pt=relocate(worldW*.52+rand(-120,140),worldH*.45+rand(-170,170));
   if(Math.hypot(pt.x-player.x,pt.y-player.y)<155)continue;
   let role="scientist";
   if(level>=5&&k===0)role="elite";
-  else if(level>=3&&k<guardCount)role="guard";
+  else if(level>=2&&k<(guardCount+(level>=5?1:0)))role="guard";
   else if(level>=4&&k%7===3)role="technician";
   else if(level>=2&&k%6===2)role="medic";
   else if(k%3===1)role="runner";
@@ -301,9 +305,9 @@ function newLevel(n){
   humans.push({x:pt.x,y:pt.y,role,guard,alive:true,panic:0,alert:0,dir:rand(0,TAU),
    turn:rand(40,110),shot:rand(35,90),hp:maxHp,maxHp,r:14,path:[],goal:null,
    repath:rand(0,35),stuck:0,strafe:k%2?1:-1,cohort:k%3,type:k%3,
-   lastX:pt.x,lastY:pt.y,cooldown:rand(35,170),walkSeed:rand(0,TAU)});
+   lastX:pt.x,lastY:pt.y,cooldown:rand(35,170),walkSeed:rand(0,TAU),nextBite:0,spawnGrace:0});
  }
- if(!humans.length)humans.push({x:worldW*.6,y:worldH*.5,role:"scientist",guard:false,alive:true,panic:0,dir:0,turn:0,shot:60,hp:1,maxHp:1,r:14,path:[],goal:null,repath:0,stuck:0,cohort:0,type:0,cooldown:90,walkSeed:0});
+ if(!humans.length)humans.push({x:worldW*.6,y:worldH*.5,role:"scientist",guard:false,alive:true,panic:0,dir:0,turn:0,shot:60,hp:1,maxHp:1,r:14,path:[],goal:null,repath:0,stuck:0,cohort:0,type:0,cooldown:90,walkSeed:0,nextBite:0,spawnGrace:0});
  hud();cam.x=0;cam.y=0;
 }
 function overlay(icon,title,desc,button){
@@ -353,10 +357,57 @@ function input(){
 function infected(h){
  h.alive=false;score+=h.role==="elite"?65:h.guard?35:h.role==="medic"||h.role==="technician"?25:10;
  particle(h.x,h.y,"#aaffaa",20);
- allies.push({x:h.x,y:h.y,vx:0,vy:0,face:0,dir:0,r:13,path:[],goal:null,repath:0,stuck:0,role:h.role});
+ allies.push({x:h.x,y:h.y,vx:0,vy:0,face:0,dir:0,r:13,path:[],goal:null,repath:0,stuck:0,role:h.role,biteReady:0});
  hud();
 }
-function hurt(){
+function hurt(){function summonBackup(){
+ if(securityWaves>=maxBackupWaves())return false;
+ securityWaves++;
+ const units=Math.min(3,1+Math.floor(level/4));
+ for(let i=0;i<units;i++){
+  let pt=null;
+  // Reinforcements arrive from an entrance distant from the zombie,
+  // not directly on top of the player.
+  for(let attempt=0;attempt<45;attempt++){
+   const x=clamp(worldW-115+rand(-60,30),50,worldW-50);
+   const y=clamp(worldH*.5+rand(-180,180),50,worldH-50);
+   if(!pointBlocked(x,y,17)&&Math.hypot(x-player.x,y-player.y)>260){pt={x,y};break}
+  }
+  if(!pt)pt=relocate(worldW*.8,worldH*.5,17);
+  humans.push({x:pt.x,y:pt.y,role:level>=5&&i===0?"elite":"guard",
+   guard:true,alive:true,panic:0,alert:100,dir:Math.PI,turn:0,
+   shot:85+rand(0,35),hp:level>=5&&i===0?5:3,maxHp:level>=5&&i===0?5:3,
+   r:14,path:[],goal:null,repath:0,stuck:0,strafe:i%2?1:-1,
+   cohort:i%3,type:i%3,lastX:pt.x,lastY:pt.y,cooldown:90,
+   walkSeed:rand(0,TAU),nextBite:0,spawnGrace:90});
+  particle(pt.x,pt.y,"#ffbd84",17);
+  backupTotal++;
+ }
+ noticeTimer=150;$("#hint").textContent="· BACKUP INBOUND!";
+ particle(exit.x,exit.y,"#ffd18b",24);
+ hud();return true;
+}
+function updateAlarm(){
+ if(level<2)return;
+ let detection=0;
+ for(const h of humans){
+  if(!h.alive||h.spawnGrace>0)continue;
+  const d=Math.hypot(h.x-player.x,h.y-player.y);
+  if(h.guard&&d<410&&hasSight(h.x,h.y,player.x,player.y)){
+   detection+=.52+(level*.09);
+  }else if(!h.guard&&h.alert>0&&d<240){
+   detection+=.023;
+  }
+ }
+ alarmMeter=clamp(alarmMeter+detection-.12,0,100);
+ if(alarmMeter>=100){
+  alarmMeter=8;
+  summonBackup();
+ }
+ if(noticeTimer>0){noticeTimer--;$("#hint").textContent=noticeTimer>0?"· BACKUP INBOUND!":humans.some(h=>h.alive)?"· INFECT ALL":"· EXIT OPEN"}
+ $("#security").textContent=Math.round(alarmMeter)+"%";
+}
+
  if(invuln>0||state!=="running")return;
  player.hp--;invuln=85;screenShake=11;particle(player.x,player.y,"#ff9f7c",15);hud();
  if(player.hp<=0){state="dead";overlay("💀","OUTBREAK CONTAINED","The guards stopped you on Level "+level+". Try again and build your horde.","RESTART OUTBREAK")}
@@ -372,7 +423,15 @@ function update(){
  for(const h of humans){
   if(!h.alive)continue;
   const dPlayer=Math.hypot(player.x-h.x,player.y-h.y);
-  if(dPlayer<player.r+h.r+3){h.hp--;if(h.hp<=0){infected(h);continue}else particle(h.x,h.y,"#f5ce89",6)}
+  // Infection now requires separate bites. Running through an armored guard
+  // cannot instantly convert them in a few animation frames.
+  if(h.spawnGrace>0)h.spawnGrace--;
+  if(dPlayer<player.r+h.r+3&&time>=h.nextBite){
+   h.nextBite=time+(h.role==="elite"?21:h.guard?18:13);
+   h.hp--;
+   if(h.hp<=0){infected(h);continue}
+   particle(h.x,h.y,"#f5ce89",9);
+  }
   const target=nearestThreat(h),near=target.near,d=target.dist;
   const sense=h.role==="runner"?470:h.role==="elite"?500:h.guard?420:355;
   const visible=d<sense&&hasSight(h.x,h.y,near.x,near.y);
@@ -393,7 +452,7 @@ function update(){
   if(h.repath<=0){
    if(danger||h.guard&&d<390){
     h.goal=chooseEscape(h,near,h.guard);
-    h.repath=h.guard?28+rand(0,13):h.role==="runner"?24+rand(0,15):46+rand(0,25);
+    h.repath=h.guard?22+rand(0,9):h.role==="runner"?18+rand(0,12):32+rand(0,22);
    }else{
     const x=clamp(h.x+rand(-170,170),40,worldW-40),y=clamp(h.y+rand(-150,150),40,worldH-40);
     h.goal=pointBlocked(x,y,19)?{x:h.x,y:h.y}:{x,y};
@@ -408,8 +467,8 @@ function update(){
    const los=dist<425&&hasSight(h.x,h.y,gunTarget.x,gunTarget.y);
    h.dir=Math.atan2(dy,dx);
    h.shot--;
-   if(los&&h.shot<=0){
-    h.shot=Math.max(h.role==="elite"?27:39,(h.role==="elite"?85:119)-level*5)+rand(0,12);
+   if(los&&h.shot<=0&&h.spawnGrace<=0){
+    h.shot=Math.max(h.role==="elite"?25:33,(h.role==="elite"?80:106)-level*5)+rand(0,11);
     const aimX=gunTarget.x+(gunTarget.vx||0)*Math.min(15,dist/42);
     const aimY=gunTarget.y+(gunTarget.vy||0)*Math.min(15,dist/42);
     const ax=aimX-h.x,ay=aimY-h.y,len=Math.hypot(ax,ay)||1;
@@ -430,9 +489,9 @@ function update(){
    }else navigate(h,h.goal,.9);
   }else{
    const pace=danger?
-    (h.role==="runner"?Math.min(3.15,2.65+level*.09):
-     h.role==="technician"?2.45:h.role==="medic"?2.45:
-     Math.min(2.9,1.9+level*.12)):
+    (h.role==="runner"?Math.min(3.62,2.85+level*.10):
+     h.role==="technician"?2.65:h.role==="medic"?2.55:
+     Math.min(3.15,2.05+level*.13)):
     h.role==="runner"?1.05:.8;
    navigate(h,h.goal,pace);
    // Medics restore injured colleagues when the corridor is safe.
@@ -475,7 +534,13 @@ function update(){
   ally.face=Math.atan2(nearest.y-ally.y,nearest.x-ally.x);
   if(hasSight(ally.x,ally.y,nearest.x,nearest.y))navigate(ally,nearest,2.35);
   else navigate(ally,ally.goal,2.05);
-  if(Math.hypot(ally.x-nearest.x,ally.y-nearest.y)<ally.r+nearest.r+4){nearest.hp--;if(nearest.hp<=0)infected(nearest)}
+  if(Math.hypot(ally.x-nearest.x,ally.y-nearest.y)<ally.r+nearest.r+4&&
+    time>=ally.biteReady&&time>=nearest.nextBite){
+   ally.biteReady=time+15;nearest.nextBite=time+11;
+   nearest.hp--;
+   if(nearest.hp<=0)infected(nearest);
+   else particle(nearest.x,nearest.y,"#aaffaa",5);
+  }
  }
  for(let i=traps.length-1;i>=0;i--){
   const trap=traps[i];
@@ -492,6 +557,7 @@ function update(){
   if(Math.hypot(b.x-player.x,b.y-player.y)<player.r+4){bullets.splice(i,1);hurt();continue}
   if(b.life<=0||pointBlocked(b.x,b.y,3)){bullets.splice(i,1);continue}
  }
+ updateAlarm();
  for(let i=particles.length-1;i>=0;i--){
   const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.vy+=.04;p.vx*=.97;p.life--;
   if(p.life<=0)particles.splice(i,1);
