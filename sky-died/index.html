@@ -105,10 +105,10 @@ function generateLevel(n){
  obstacles=[];pickups=[];specks=[];stars=[];clouds=[];buildingLights=[];edgeWind=0;
  time=0;invuln=0;shake=0;landedTimer=0;flash=0;takeoff=0;citySeed=n;
  pillow={x:clamp(275+Math.sin(n*2.3)*75,170,375),w:172-(n>4?Math.min(30,(n-4)*4):0)};
- player={x:143,y:ROOF_Y-35,vx:0,vy:0,r:16,hp:5,spin:0,face:0};
+ player={x:143,y:ROOF_Y-35,vx:0,vy:0,r:16,hp:6,spin:0,face:0};
  wind=level===1?0:Math.sin(n*2.4)*(.03+.008*Math.min(level,9));
  const types=["bird","drone","sign","scaffold","antenna","kite","helicopter","crane","billboard","windowCleaner","balloon","fan","glass","beam"];
- let gap=Math.max(230,385-level*10),y=650,k=0;
+ let gap=Math.max(250,405-level*10),y=650,k=0;
  while(y<groundY-300){
   const type=types[(k*7+Math.floor(rand(0,types.length)))%types.length];
   const size=type==="crane"?160:type==="billboard"?136:type==="scaffold"?123:type==="helicopter"?120:type==="sign"?96:type==="beam"?114:type==="windowCleaner"?94: type==="fan"?80: type==="antenna"?85:49;
@@ -189,7 +189,7 @@ function collideObstacle(o){
 }
 function hit(o){
  if(invuln>0)return;
- invuln=123;player.hp--;$("#health").textContent=player.hp;
+ invuln=145;player.hp--;$("#health").textContent=player.hp;
  player.vx+=(player.x>=o.x?5:-5);player.vy=Math.max(2,player.vy*.4);shake=10;
  spawnFX(player.x,player.y,"#ffe2a4",19,1.2);
  if(player.hp<=0){
@@ -231,9 +231,9 @@ function update(){
  const direction=steer(),brake=braking();
  // Airflow strengthens near the walls: holding right no longer creates
  // a completely safe strategy, but gusts do not cause damage.
- const rightPressure=clamp((player.x-386)/56,0,1);
- const leftPressure=clamp((188-player.x)/52,0,1);
- edgeWind=-rightPressure*(.37+rightPressure*.16)+leftPressure*.45;
+ const rightPressure=clamp((player.x-359)/51,0,1);
+ const leftPressure=clamp((185-player.x)/52,0,1);
+ edgeWind=-rightPressure*(.95+rightPressure*.08)+leftPressure*.80;
  const ax=direction*.29+wind*(brake?.42:1)+edgeWind*(brake?.62:1);
 
  player.vx=clamp((player.vx+ax)*.971,-4.8,4.8);
@@ -258,7 +258,7 @@ function update(){
   if(p.used)continue;
   if(Math.abs(p.y-player.y)<player.r+p.r+12&&Math.hypot(p.x-player.x,p.y-player.y)<player.r+p.r+14){
    p.used=true;
-   if(player.hp<5){player.hp++;$("#health").textContent=player.hp}
+   if(player.hp<6){player.hp++;$("#health").textContent=player.hp}
    else score+=35;
    spawnFX(p.x,p.y,"#a7ffe8",24,1.1);
   }
