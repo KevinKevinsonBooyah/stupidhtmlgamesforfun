@@ -91,7 +91,7 @@ const $=s=>document.querySelector(s),c=$("#game"),g=c.getContext("2d",{alpha:fal
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n)),rand=(a,b)=>a+Math.random()*(b-a);
 const inputs={left:false,right:false,brake:false},keys=new Set();
 const ROOF_Y=220,ROOF_EDGE=222,SAFE_LEFT=145,SAFE_RIGHT=452;
-let level=1,groundY=12500,player=null,camY=-100,pillow=null,obstacles=[],pickups=[],specks=[],stars=[],clouds=[],state="roof",time=0,last=0,acc=0,invuln=0,shake=0,wind=0,landedTimer=0,score=0,buildingLights=[],citySeed=0,takeoff=0,flash=0,edgeWind=0;
+let level=1,groundY=12500,player=null,camY=-100,pillow=null,obstacles=[],pickups=[],specks=[],stars=[],clouds=[],state="roof",time=0,last=0,acc=0,invuln=0,shake=0,wind=0,landedTimer=0,score=0,buildingLights=[],citySeed=0,takeoff=0,flash=0,edgeWind=0,leapTicks=0;
 
 function circle(x,y,r,col){g.fillStyle=col;g.beginPath();g.arc(x,y,r,0,TAU);g.fill()}
 function spawnFX(x,y,col,n=18,force=1){
@@ -103,7 +103,7 @@ function generateLevel(n){
  // Roughly 1+ km of fall, increasing by hundreds of meters each level.
  groundY=12500+(n-1)*2800;camY=-110;
  obstacles=[];pickups=[];specks=[];stars=[];clouds=[];buildingLights=[];edgeWind=0;
- time=0;invuln=0;shake=0;landedTimer=0;flash=0;takeoff=0;citySeed=n;
+ time=0;invuln=0;shake=0;landedTimer=0;flash=0;takeoff=0;citySeed=n;leapTicks=0;
  pillow={x:clamp(275+Math.sin(n*2.3)*75,170,375),w:172-(n>4?Math.min(30,(n-4)*4):0)};
  player={x:143,y:ROOF_Y-35,vx:0,vy:0,r:16,hp:6,spin:0,face:0};
  wind=level===1?0:Math.sin(n*2.4)*(.03+.008*Math.min(level,9));
@@ -145,9 +145,11 @@ function generateLevel(n){
 }
 function jump(){
  if(state!=="roof")return;
- state="falling";
- player.vy=2.2;player.x=ROOF_EDGE+30;player.vx=2.6;player.y=ROOF_Y-38;
- takeoff=35;shake=5;flash=.7;
+ state="leaping";
+ // Keep the player physically on the roof at the start of the jump.
+ // They run/leap over the ledge rather than teleporting into midair.
+ player.vy=-2.0;player.vx=4.8;leapTicks=32;
+ takeoff=35;shake=4;flash=.65;
  $("#jump").hidden=true;$("#roof-caption").hidden=true;
  spawnFX(player.x,ROOF_Y,"#d8f7ff",24,1.1);
  last=0;acc=0;
@@ -224,6 +226,21 @@ function update(){
   player.x=clamp(player.x+direction*2.9,72,ROOF_EDGE-22);
   player.spin=Math.sin(time*.065)*.015;
   camY=-110;
+  return;
+ }
+ if(state==="leaping"){
+  leapTicks--;
+  player.x+=player.vx;
+  player.y+=player.vy;
+  player.vy=Math.min(3,player.vy+.18);
+  player.spin+=.025;
+  camY=-110;
+  if(player.x>=ROOF_EDGE+30||leapTicks<=0){
+   player.x=Math.max(player.x,ROOF_EDGE+22);
+   player.vx=2.6;
+   player.vy=Math.max(player.vy,2.0);
+   state="falling";
+  }
   return;
  }
  if(state!=="falling")return;
@@ -576,7 +593,7 @@ function frame(t){
  if(!last)last=t;
  const dt=Math.min(.06,(t-last)/1000);last=t;
  acc=Math.min(.06,acc+dt);
- if(state==="roof"||state==="falling"||state==="landed"){let count=0;while(acc>=1/60&&count<3){update();acc-=1/60;count++}}
+ if(state==="roof"||state==="leaping"||state==="falling"||state==="landed"){let count=0;while(acc>=1/60&&count<3){update();acc-=1/60;count++}}
  else acc=0;
  draw();
  requestAnimationFrame(frame);
