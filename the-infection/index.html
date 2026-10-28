@@ -59,6 +59,14 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:900/570;touch-action:no
  .hint{margin:19px 0 7px}
 }
 @media(max-height:600px) and (orientation:landscape){canvas{aspect-ratio:900/500}.controls{gap:10px}.joystick{width:90px;height:90px}.dash{height:72px}.hint{display:none}}
+
+html,body,body *,body *::before,body *::after{
+ -webkit-user-select:none!important;user-select:none!important;
+ -webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+}
+img,svg{-webkit-user-drag:none;user-drag:none}
+.human-types{display:flex;justify-content:center;flex-wrap:wrap;gap:6px 13px;color:#a4c8bc;font-size:10px;margin:8px 0 0;text-align:center}
+.human-types b{color:#d4f4e4;font-weight:750}
 </style>
 </head>
 <body>
@@ -86,6 +94,7 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:900/570;touch-action:no
  <button class="dash" id="dash" aria-label="Dash">⚡ DASH</button>
 </div>
 <p class="hint">WASD / Arrow Keys to move · SPACE to dash · Touch controls on mobile</p>
+<div class="human-types"><span>🧪 <b>Scientists</b></span><span>🏃 <b>Runners</b></span><span>➕ <b>Medics</b></span><span>⚡ <b>Technicians</b></span><span>🛡️ <b>Guards</b></span><span>⭐ <b>Elites</b></span></div>
 <div class="footer">THE INFECTION · HTML GAME CENTER</div>
 </main>
 <script>
@@ -609,40 +618,91 @@ function drawWall(o){
   }
  }
 }
+// Side-on/top-down hybrid people with distinct limbs, faces, clothes and
+// recognizable equipment; they're characters now, not colored boxes.
 function drawHuman(h){
  const x=h.x-cam.x,y=h.y-cam.y;
- ctx.save();ctx.translate(x,y);ctx.rotate(h.dir||0);
- ctx.fillStyle="#020b106f";ctx.beginPath();ctx.ellipse(0,10,17,11,0,0,TAU);ctx.fill();
- const walking=Math.sin(time*.13+h.x*.1)*2;
- ctx.fillStyle="#162732";ctx.fillRect(-12,8+walking,7,9);ctx.fillRect(6,8-walking,7,9);
- // Lab coats for scientists, dark armored uniforms for guards.
- ctx.fillStyle=h.guard?"#405f6e":"#e4f0ec";
- ctx.beginPath();ctx.roundRect(-11,-12,22,27,5);ctx.fill();
- ctx.fillStyle=h.guard?"#b0d6d2":"#78b7b4";
- ctx.fillRect(-2,-10,5,22);
- ctx.fillStyle=h.guard?"#5d8290":"#b4d7dd";
- ctx.fillRect(-16,-7,6,16);ctx.fillRect(10,-7,6,16);
- circle(3,-3,7,"#f3d2b7");
- ctx.fillStyle="#1b3036";ctx.fillRect(5,-6,3,2);ctx.fillRect(5,0,3,2);
- if(h.guard){
-  ctx.fillStyle="#24383c";ctx.fillRect(-13,-16,26,9);
-  ctx.fillStyle="#d9ebea";ctx.fillRect(-9,-13,14,3);
-  ctx.fillStyle="#172c34";ctx.fillRect(14,-5,14,5);
-  ctx.fillStyle="#e8c99e";ctx.fillRect(24,-3,6,3);
- }else{
-  ctx.fillStyle=["#86c5dd","#b8b5e8","#b8e2b9"][h.type||0];
-  ctx.fillRect(-11,-9,7,5);
-  ctx.fillStyle="#2a5659";ctx.fillRect(-9,4,6,4);
+ if(x<-70||x>VW+70||y<-75||y>VH+75)return;
+ const role=h.role||"scientist",guard=h.guard;
+ const skin=["#efc1a4","#ad775e","#dfaa87","#c28d70"][h.type%4||0];
+ const coats={scientist:"#e5f3ef",runner:"#dba56d",medic:"#edf6f8",technician:"#a18bd9",guard:"#4d6c7e",elite:"#273747"};
+ const colors={scientist:"#9de1dd",runner:"#ffd395",medic:"#ffbdc1",technician:"#c8b1ff",guard:"#a2cce3",elite:"#ffcf7d"};
+ const uniform=coats[role]||coats.scientist,accent=colors[role]||colors.scientist;
+ const stride=Math.sin(time*(h.panic>0?.23:.13)+(h.walkSeed||0))*4;
+ ctx.save();ctx.translate(x,y);ctx.rotate(h.dir||0);ctx.lineCap="round";
+ ctx.fillStyle="#06161ac4";ctx.beginPath();ctx.ellipse(-2,12,26,15,0,0,TAU);ctx.fill();
+ // Separated boots and legs: clearly a human running or walking.
+ ctx.lineWidth=7;ctx.strokeStyle=guard?"#1b3040":role==="runner"?"#385e72":"#304351";
+ ctx.beginPath();ctx.moveTo(-9,-5);ctx.lineTo(-24,-7+stride);
+ ctx.moveTo(-9,5);ctx.lineTo(-24,7-stride);ctx.stroke();
+ ctx.lineWidth=7;ctx.strokeStyle="#0e202b";
+ ctx.beginPath();ctx.moveTo(-24,-7+stride);ctx.lineTo(-28,-6+stride);
+ ctx.moveTo(-24,7-stride);ctx.lineTo(-28,6-stride);ctx.stroke();
+ // Bent, animated arms and little hands sit outside the torso.
+ ctx.lineWidth=8;ctx.strokeStyle=uniform;
+ ctx.beginPath();ctx.moveTo(-3,-11);ctx.lineTo(6+stride*.27,-17);
+ ctx.moveTo(-3,11);ctx.lineTo(5-stride*.27,17);ctx.stroke();
+ ctx.lineWidth=4;ctx.strokeStyle=skin;
+ ctx.beginPath();ctx.moveTo(6+stride*.27,-17);ctx.lineTo(10+stride*.27,-19);
+ ctx.moveTo(5-stride*.27,17);ctx.lineTo(9-stride*.27,19);ctx.stroke();
+ // Torso, collar and clothing folds.
+ ctx.fillStyle=uniform;ctx.beginPath();ctx.roundRect(-14,-11,27,22,7);ctx.fill();
+ ctx.fillStyle=accent;ctx.fillRect(-10,-9,4,18);
+ ctx.fillStyle=guard?"#1b3241":"#647e82";ctx.fillRect(2,-8,6,16);
+ ctx.fillStyle=skin;ctx.fillRect(10,-4,6,8);
+ // Actual round head with a face, hair, and two visible eyes.
+ ctx.fillStyle=skin;ctx.beginPath();ctx.arc(16,0,9,0,TAU);ctx.fill();
+ ctx.fillStyle=["#3b2d2c","#201c23","#74513a"][h.type%3||0];
+ ctx.beginPath();ctx.arc(14,0,9,Math.PI*.62,Math.PI*1.45);ctx.lineWidth=3.2;ctx.strokeStyle=ctx.fillStyle;ctx.stroke();
+ ctx.fillStyle="#172e3a";ctx.beginPath();ctx.arc(20,-3,1.5,0,TAU);ctx.arc(20,3,1.5,0,TAU);ctx.fill();
+ ctx.strokeStyle="#875d53";ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(22,-1);ctx.lineTo(22,1);ctx.stroke();
+ if(role==="scientist"){
+  // Lab coat pockets, pen and ID badge.
+  ctx.fillStyle="#87a8b6";ctx.fillRect(-7,4,8,4);
+  ctx.fillStyle="#428ed1";ctx.fillRect(-3,-10,7,6);
+  ctx.fillStyle="#a6e9e8";ctx.fillRect(4,-9,3,4);
+ }else if(role==="runner"){
+  ctx.fillStyle="#f9d69d";ctx.fillRect(-13,-8,5,16);
+  ctx.fillStyle="#46698c";ctx.fillRect(-5,-11,9,5);
+  ctx.fillStyle="#4b6678";ctx.fillRect(-15,-7,3,14);
+  ctx.fillStyle="#ffe1bd";ctx.fillRect(13,-8,5,4);
+ }else if(role==="medic"){
+  ctx.fillStyle="#dc525e";ctx.fillRect(-7,-3,12,6);ctx.fillRect(-4,-7,6,14);
+  ctx.fillStyle="#64bad3";ctx.fillRect(3,-10,9,5);
+  ctx.strokeStyle="#df4655";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(8,-15);ctx.lineTo(8,-9);ctx.stroke();
+ }else if(role==="technician"){
+  ctx.fillStyle="#494d8d";ctx.fillRect(-12,-6,5,14);
+  ctx.fillStyle="#73ffec";ctx.fillRect(-5,-8,12,6);
+  ctx.fillStyle="#70e4e5";ctx.fillRect(6,-18,6,6);
+  ctx.fillStyle="#2e3e4f";ctx.fillRect(17,-4,7,8);
+  ctx.fillStyle="#bbffff";ctx.fillRect(19,-3,4,6);
+ }else if(guard){
+  ctx.fillStyle=role==="elite"?"#e9ba79":"#91c6d1";
+  ctx.fillRect(-12,-6,21,4);ctx.fillRect(-12,3,21,4);
+  ctx.fillStyle="#253846";ctx.fillRect(11,-9,10,18);
+  ctx.fillStyle=role==="elite"?"#ffcd86":"#89edf7";ctx.fillRect(17,-8,3,14);
+  // Body armour, visor and compact rifle pointed along the heading.
+  ctx.fillStyle="#16232c";ctx.fillRect(20,-5,17,8);
+  ctx.fillStyle="#d3e2d7";ctx.fillRect(34,-4,5,6);
+  ctx.fillStyle="#263747";ctx.fillRect(9,-9,14,18);
+  ctx.fillStyle=role==="elite"?"#ffce83":"#b8edf5";ctx.fillRect(17,-7,4,14);
  }
  ctx.restore();
- if(h.panic>25){
-  ctx.fillStyle="#12262a";ctx.beginPath();ctx.roundRect(x-11,y-33,22,19,6);ctx.fill();
-  ctx.font="bold 13px system-ui";ctx.fillStyle=h.guard?"#ffd17c":"#ffb1a7";ctx.textAlign="center";
-  ctx.fillText(h.guard?"⚠":"!",x,y-18);
+ // Legible role badges help players recognize different AI behaviors.
+ if(role!=="scientist"){
+  const tag=role==="technician"?"TECH":role==="elite"?"ELITE":role==="runner"?"RUNNER":role==="medic"?"MEDIC":"GUARD";
+  const w=tag.length*6+12,tx=x-w/2,ty=y-41;
+  ctx.fillStyle="#0a1d24e8";ctx.beginPath();ctx.roundRect(tx,ty,w,15,5);ctx.fill();
+  ctx.fillStyle=accent;ctx.font="800 9px system-ui";ctx.textAlign="center";ctx.fillText(tag,x,ty+10.5);
  }
- if(h.guard&&h.hp<3){
-  ctx.fillStyle="#5a3435";ctx.fillRect(x-12,y+21,24,3);
-  ctx.fillStyle="#a4eece";ctx.fillRect(x-12,y+21,24*Math.max(0,h.hp)/3,3);
+ if(h.panic>25&&!guard){
+  ctx.fillStyle="#f6ad80";ctx.font="bold 17px system-ui";ctx.textAlign="center";
+  ctx.fillText("!",x+17,y-19);
+ }
+ if(h.maxHp>1&&h.hp<h.maxHp){
+  ctx.fillStyle="#382935";ctx.fillRect(x-15,y+23,30,4);
+  ctx.fillStyle=role==="medic"?"#b7ffe1":"#f0b87a";
+  ctx.fillRect(x-15,y+23,30*Math.max(0,h.hp)/h.maxHp,4);
  }
 }
 function drawZombie(z,leader=false){
@@ -693,9 +753,28 @@ function draw(){
  if(unlocked){
   ctx.strokeStyle="#93ffc8bb";ctx.lineWidth=2;ctx.beginPath();ctx.arc(gx,gy,39+Math.sin(time*.08)*4,0,TAU);ctx.stroke();
  }
+ // Technician pulse devices telegraph their radius before slowing you.
+ for(const p of traps){
+  const tx=p.x-cam.x,ty=p.y-cam.y;
+  if(tx<-100||tx>VW+100||ty<-100||ty>VH+100)continue;
+  const charging=p.charge>0,progress=charging?1-p.charge/50:1;
+  const radius=charging?p.r*(.35+.65*progress):p.r;
+  ctx.fillStyle=charging?"#b28aff22":"#bc9fff38";
+  ctx.beginPath();ctx.arc(tx,ty,radius,0,TAU);ctx.fill();
+  ctx.strokeStyle=charging?"#e0aaffa3":"#d2c0ffde";
+  ctx.lineWidth=charging?1.5:2.5;
+  ctx.beginPath();ctx.arc(tx,ty,radius,0,TAU);ctx.stroke();
+  circle(tx,ty,7,charging?"#bd98ee":"#e1c1ff");
+  ctx.fillStyle="#2a2947";ctx.fillRect(tx-3,ty-3,6,6);
+ }
  for(const h of humans)if(h.alive)drawHuman(h);
  for(const ally of allies)drawZombie(ally,false);
  if(player)drawZombie(player,true);
+ if(player&&player.slow>0){
+  const px=player.x-cam.x,py=player.y-cam.y;
+  ctx.strokeStyle="#d5a6ffba";ctx.lineWidth=3;
+  ctx.beginPath();ctx.arc(px,py,23+Math.sin(time*.12)*4,0,TAU);ctx.stroke();
+ }
  for(const b of bullets){circle(b.x-cam.x,b.y-cam.y,5,"#ffba73");circle(b.x-cam.x,b.y-cam.y,2,"#fff2ca")}
  for(const p of particles){ctx.globalAlpha=clamp(p.life/30,0,1);circle(p.x-cam.x,p.y-cam.y,2.6,p.shade)}
  ctx.globalAlpha=1;
