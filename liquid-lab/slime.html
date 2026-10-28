@@ -343,7 +343,7 @@ function step(){
   if(p.life<=0)sparks.splice(i,1);
  }
  for(let i=ripples.length-1;i>=0;i--){const p=ripples[i];p.r+=3.5;p.life-=.034;if(p.life<=0)ripples.splice(i,1)}
- for(let i=tearLines.length-1;i>=0;i--){const p=tearLines[i];p.life-=.062;if(p.life<=0)tearLines.splice(i,1)}
+ for(let i=tearLines.length-1;i>=0;i--){const p=tearLines[i];p.life-=.032;if(p.life<=0)tearLines.splice(i,1)}
  if(tearNotice>0&&--tearNotice===0){
   $("#grabs").textContent=touches.size?"✌️ STRETCHING":"✋ TOUCH TO GRAB";
   $("#hint").textContent="☝️ Drag to move · ✌️ Stretch";
