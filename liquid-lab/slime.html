@@ -114,7 +114,7 @@ const mobile=(navigator.maxTouchPoints>=2)||(window.matchMedia&&window.matchMedi
 if(!mobile){$("#desktop").style.display="flex";$("#status").textContent="MOBILE ONLY"}
 const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
 let color="mint",stretch=.7,thickness=.7,gravity=.25,fx=true,phase=0;
-let bodies=[],touches=new Map(),sparks=[],ripples=[],tearLines=[],serial=0,last=0,accumulator=0,running=true,tearNotice=0;
+let bodies=[],touches=new Map(),sparks=[],ripples=[],tearLines=[],serial=0,last=0,accumulator=0,running=true,tearNotice=0,tearFlash=0,shakeFrames=0,stressGlow=0;
 function resize(){
  const box=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,1.65);
  if(!box.width||!box.height)return;
@@ -134,7 +134,7 @@ function makeBody(cx,cy,rx=124,ry=94,vx=0,vy=0){
  return b;
 }
 function reset(){
- touches.clear();sparks=[];ripples=[];tearLines=[];tearNotice=0;
+ touches.clear();sparks=[];ripples=[];tearLines=[];tearNotice=0;tearFlash=0;shakeFrames=0;stressGlow=0;
  bodies=[makeBody(W*.5,H*.54)];
  $("#grabs").textContent="✋ TOUCH TO GRAB";
  $("#hint").textContent="☝️ Drag to move · ✌️ Stretch";
@@ -319,7 +319,15 @@ function splitBody(body,t1,t2){
  t1.node.x=t1.x;t1.node.y=t1.y;
  t2.node.x=t2.x;t2.node.y=t2.y;
  tearLines.push({x1:t1.x,y1:t1.y,x2:t2.x,y2:t2.y,life:1});
- sparkle(midpoint.x,midpoint.y,48,1.5);
+ tearFlash=1;shakeFrames=23;stressGlow=0;
+ sparkle(midpoint.x,midpoint.y,75,2.25);
+ sparkle(t1.x,t1.y,22,1.5);
+ sparkle(t2.x,t2.y,22,1.5);
+ for(let k=0;k<13;k++){
+  const r=18+k*10;
+  ripples.push({x:midpoint.x,y:midpoint.y,r,life:1-k*.042});
+ }
+ if(ripples.length>24)ripples.splice(0,ripples.length-24);
  $("#grabs").textContent="💥 SNAPPED IN TWO!";
  $("#hint").textContent="Two slimes! Keep pulling!";
  tearNotice=115;
@@ -328,15 +336,20 @@ function maybeSplit(){
  const grabbed=[...touches.values()];
  if(grabbed.length!==2||grabbed[0].body!==grabbed[1].body)return;
  const a=grabbed[0],b=grabbed[1],dist=Math.hypot(a.x-b.x,a.y-b.y);
- const threshold=265+stretch*205;
- if(dist>threshold&&Math.hypot(a.x-a.ox,a.y-a.oy)+Math.hypot(b.x-b.ox,b.y-b.oy)>110){
+ const threshold=445+stretch*145;
+ const totalPull=Math.hypot(a.x-a.ox,a.y-a.oy)+Math.hypot(b.x-b.ox,b.y-b.oy);
+ stressGlow=clamp((dist-threshold*.55)/(threshold*.45),0,1);
+ if(dist>threshold&&totalPull>250){
   a.held++;b.held++;
-  if(a.held>=4)splitBody(a.body,a,b);
+  if(a.held>=11)splitBody(a.body,a,b);
  }else{a.held=0;b.held=0}
 }
 function step(){
  phase+=1/60;
  maybeSplit();
+ if(tearFlash>0)tearFlash=Math.max(0,tearFlash-.055);
+ if(shakeFrames>0)shakeFrames--;
+ if(touches.size<2)stressGlow*=.82;
  for(const b of bodies)constrainBody(b);
  for(let i=sparks.length-1;i>=0;i--){
   const p=sparks[i];p.x+=p.vx;p.y+=p.vy;p.vy+=.10;p.vx*=.985;p.life-=.024;
@@ -425,6 +438,11 @@ function drawBody(b){
 }
 function draw(){
  g.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);
+ g.save();
+ if(shakeFrames>0){
+  const intensity=(shakeFrames/23)*5;
+  g.translate((Math.random()-.5)*intensity*2,(Math.random()-.5)*intensity*2);
+ }
  g.drawImage(backgroundCanvas,0,0,W,H);
  for(const b of bodies)drawBody(b);
  if(fx){
@@ -450,16 +468,37 @@ function draw(){
  const grabbed=[...touches.values()];
  if(grabbed.length===2&&grabbed[0].body===grabbed[1].body){
   const a=grabbed[0],b=grabbed[1];
-  const d=Math.hypot(a.x-b.x,a.y-b.y),threshold=265+stretch*205;
-  g.strokeStyle="rgba(219,255,236,"+(d/threshold*.23)+")";
+  const d=Math.hypot(a.x-b.x,a.y-b.y),threshold=445+stretch*145;
+  const pressure=clamp(d/threshold,0,1.2);
+  // Tension strands become increasingly bright and jagged near rupture.
+  if(fx&&pressure>.68){
+   const mx=(a.x+b.x)*.5,my=(a.y+b.y)*.5;
+   g.save();
+   g.shadowColor="#baffdd";g.shadowBlur=12+stressGlow*25;
+   for(let k=-1;k<=1;k++){
+    const offset=k*(7+stressGlow*7);
+    g.strokeStyle="rgba(225,255,237,"+(.18+stressGlow*.36)+")";
+    g.lineWidth=1+stressGlow*2.5;
+    g.beginPath();g.moveTo(a.x,a.y);
+    g.quadraticCurveTo(mx+Math.sin(phase*14+k*2)*18,my+offset,b.x,b.y);
+    g.stroke();
+   }
+   g.restore();
+  }
+  g.strokeStyle="rgba(219,255,236,"+(pressure*.23)+")";
   g.lineWidth=1.8;g.setLineDash([8,8]);
   g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.stroke();g.setLineDash([]);
+ }
+ if(tearFlash>0&&fx){
+  g.fillStyle="rgba(237,255,243,"+Math.pow(tearFlash,2)*.34+")";
+  g.fillRect(0,0,W,H);
  }
  for(const t of grabbed){
   g.strokeStyle="#eefff4c4";g.lineWidth=2;
   g.beginPath();g.arc(t.x,t.y,14+Math.sin(phase*6)*2,0,TAU);g.stroke();
   g.fillStyle="#fff9";g.beginPath();g.arc(t.x,t.y,3.5,0,TAU);g.fill();
  }
+ g.restore();
 }
 function frame(time){
  if(!running)return;
