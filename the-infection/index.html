@@ -360,7 +360,7 @@ function infected(h){
  allies.push({x:h.x,y:h.y,vx:0,vy:0,face:0,dir:0,r:13,path:[],goal:null,repath:0,stuck:0,role:h.role,biteReady:0});
  hud();
 }
-function hurt(){function summonBackup(){
+function summonBackup(){
  if(securityWaves>=maxBackupWaves())return false;
  securityWaves++;
  const units=Math.min(3,1+Math.floor(level/4));
@@ -407,7 +407,7 @@ function updateAlarm(){
  if(noticeTimer>0){noticeTimer--;$("#hint").textContent=noticeTimer>0?"· BACKUP INBOUND!":humans.some(h=>h.alive)?"· INFECT ALL":"· EXIT OPEN"}
  $("#security").textContent=Math.round(alarmMeter)+"%";
 }
-
+function hurt(){
  if(invuln>0||state!=="running")return;
  player.hp--;invuln=85;screenShake=11;particle(player.x,player.y,"#ff9f7c",15);hud();
  if(player.hp<=0){state="dead";overlay("💀","OUTBREAK CONTAINED","The guards stopped you on Level "+level+". Try again and build your horde.","RESTART OUTBREAK")}
