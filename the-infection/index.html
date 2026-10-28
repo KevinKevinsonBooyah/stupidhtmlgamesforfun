@@ -97,7 +97,7 @@ const clamp=(a,b,c)=>Math.max(b,Math.min(c,a));
 const rand=(a,b)=>a+Math.random()*(b-a);
 const circle=(x,y,r,fill)=>{ctx.fillStyle=fill;ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill()};
 const keys=new Set(),joy={x:0,y:0,active:false,pointer:null},particles=[];
-let level=1,worldW=1000,worldH=650,walls=[],humans=[],allies=[],bullets=[],decor=[],navGrid=null,navCols=0,navRows=0,player=null,exit=null,cam={x:0,y:0},state="menu",dashReady=0,invuln=0,time=0,last=0,acc=0,screenShake=0,score=0;
+let level=1,worldW=1000,worldH=650,walls=[],humans=[],allies=[],bullets=[],traps=[],decor=[],navGrid=null,navCols=0,navRows=0,player=null,exit=null,cam={x:0,y:0},state="menu",dashReady=0,invuln=0,time=0,last=0,acc=0,screenShake=0,score=0;
 const NAV=42;let alarms=0;
 const hud=()=>{$("#level").textContent=level;$("#remaining").textContent=humans.filter(h=>h.alive).length+" HUMANS";$("#health").textContent=player?player.hp:5;$("#hint").textContent=humans.some(h=>h.alive)?"· INFECT ALL":"· EXIT OPEN"};
 function particle(x,y,shade,n=12){
@@ -244,9 +244,9 @@ function navigate(entity,destination,speed){
 }
 function newLevel(n){
  level=n;worldW=990+(n-1)*155;worldH=635+(n-1)*115;
- walls=[];decor=[];humans=[];allies=[];bullets=[];particles.length=0;
+ walls=[];decor=[];humans=[];allies=[];bullets=[];traps=[];particles.length=0;
  screenShake=0;invuln=70;dashReady=0;alarms=0;
- player={x:77,y:worldH*.5,r:16,hp:5,maxHp:5,face:0,vx:0,vy:0};
+ player={x:77,y:worldH*.5,r:16,hp:5,maxHp:5,face:0,vx:0,vy:0,slow:0};
  exit={x:worldW-63,y:worldH*.5,w:38,h:93};
  const columns=Math.ceil(worldW/190),rows=Math.ceil(worldH/154);
  for(let yy=0;yy<rows;yy++)for(let xx=0;xx<columns;xx++){
@@ -276,17 +276,25 @@ function newLevel(n){
   decor.push({x:worldW-34,y:120+i*270,kind:"light"});
  }
  makeNavigation();
- const count=Math.min(22,3+level*2);
+ const count=Math.min(26,4+level*2);
+ const guardCount=level>=3?Math.min(6,1+Math.floor((level-3)/2)):0;
  for(let k=0;k<count;k++){
   const pt=relocate(worldW*.52+rand(-120,140),worldH*.45+rand(-170,170));
   if(Math.hypot(pt.x-player.x,pt.y-player.y)<155)continue;
-  const guard=level>=3&&k<Math.min(6,1+Math.floor((level-3)*.65));
-  humans.push({x:pt.x,y:pt.y,guard,alive:true,panic:0,alert:0,dir:rand(0,TAU),
-   turn:rand(40,110),shot:rand(35,90),hp:guard?3:1,r:14,path:[],goal:null,
+  let role="scientist";
+  if(level>=5&&k===0)role="elite";
+  else if(level>=3&&k<guardCount)role="guard";
+  else if(level>=4&&k%7===3)role="technician";
+  else if(level>=2&&k%6===2)role="medic";
+  else if(k%3===1)role="runner";
+  const guard=role==="guard"||role==="elite";
+  const maxHp=role==="elite"?5:guard?3:role==="technician"||role==="medic"?2:1;
+  humans.push({x:pt.x,y:pt.y,role,guard,alive:true,panic:0,alert:0,dir:rand(0,TAU),
+   turn:rand(40,110),shot:rand(35,90),hp:maxHp,maxHp,r:14,path:[],goal:null,
    repath:rand(0,35),stuck:0,strafe:k%2?1:-1,cohort:k%3,type:k%3,
-   lastX:pt.x,lastY:pt.y});
+   lastX:pt.x,lastY:pt.y,cooldown:rand(35,170),walkSeed:rand(0,TAU)});
  }
- if(!humans.length)humans.push({x:worldW*.6,y:worldH*.5,guard:false,alive:true,panic:0,dir:0,turn:0,shot:60,hp:1,r:14,path:[],goal:null,repath:0,stuck:0,cohort:0,type:0});
+ if(!humans.length)humans.push({x:worldW*.6,y:worldH*.5,role:"scientist",guard:false,alive:true,panic:0,dir:0,turn:0,shot:60,hp:1,maxHp:1,r:14,path:[],goal:null,repath:0,stuck:0,cohort:0,type:0,cooldown:90,walkSeed:0});
  hud();cam.x=0;cam.y=0;
 }
 function overlay(icon,title,desc,button){
@@ -334,9 +342,9 @@ function input(){
  return{x:len>1?x/len:x,y:len>1?y/len:y,len};
 }
 function infected(h){
- h.alive=false;score+=h.guard?30:10;
+ h.alive=false;score+=h.role==="elite"?65:h.guard?35:h.role==="medic"||h.role==="technician"?25:10;
  particle(h.x,h.y,"#aaffaa",20);
- allies.push({x:h.x,y:h.y,vx:0,vy:0,face:0,dir:0,r:13,path:[],goal:null,repath:0,stuck:0});
+ allies.push({x:h.x,y:h.y,vx:0,vy:0,face:0,dir:0,r:13,path:[],goal:null,repath:0,stuck:0,role:h.role});
  hud();
 }
 function hurt(){
@@ -347,7 +355,8 @@ function hurt(){
 function update(){
  if(state!=="running")return;
  time++;if(dashReady>0)dashReady--;if(invuln>0)invuln--;if(screenShake>0)screenShake*=.84;
- const v=input(),speed=3.3,oldX=player.x,oldY=player.y;
+ if(player.slow>0)player.slow--;
+ const v=input(),speed=player.slow>0?2.25:3.5,oldX=player.x,oldY=player.y;
  moveBody(player,v.x*speed,v.y*speed,player.r);
  player.vx=player.x-oldX;player.vy=player.y-oldY;
  if(v.len>.12)player.face=Math.atan2(v.y,v.x);
@@ -356,10 +365,11 @@ function update(){
   const dPlayer=Math.hypot(player.x-h.x,player.y-h.y);
   if(dPlayer<player.r+h.r+3){h.hp--;if(h.hp<=0){infected(h);continue}else particle(h.x,h.y,"#f5ce89",6)}
   const target=nearestThreat(h),near=target.near,d=target.dist;
-  const visible=d<350&&hasSight(h.x,h.y,near.x,near.y);
-  const heard=d<190;
+  const sense=h.role==="runner"?470:h.role==="elite"?500:h.guard?420:355;
+  const visible=d<sense&&hasSight(h.x,h.y,near.x,near.y);
+  const heard=d<(h.role==="runner"?220:170);
   if(visible||heard){
-   h.panic=h.guard?75:170;
+   h.panic=h.guard?80:h.role==="runner"?210:170;
    h.alert=90;
    // A panicking scientist alerts nearby colleagues instead of fleeing alone.
    if(time%25===h.cohort){
@@ -374,7 +384,7 @@ function update(){
   if(h.repath<=0){
    if(danger||h.guard&&d<390){
     h.goal=chooseEscape(h,near,h.guard);
-    h.repath=h.guard?32+rand(0,14):46+rand(0,25);
+    h.repath=h.guard?28+rand(0,13):h.role==="runner"?24+rand(0,15):46+rand(0,25);
    }else{
     const x=clamp(h.x+rand(-170,170),40,worldW-40),y=clamp(h.y+rand(-150,150),40,worldH-40);
     h.goal=pointBlocked(x,y,19)?{x:h.x,y:h.y}:{x,y};
@@ -390,22 +400,49 @@ function update(){
    h.dir=Math.atan2(dy,dx);
    h.shot--;
    if(los&&h.shot<=0){
-    h.shot=Math.max(35,115-level*6)+rand(0,15);
+    h.shot=Math.max(h.role==="elite"?27:39,(h.role==="elite"?85:119)-level*5)+rand(0,12);
     const aimX=gunTarget.x+(gunTarget.vx||0)*Math.min(15,dist/42);
     const aimY=gunTarget.y+(gunTarget.vy||0)*Math.min(15,dist/42);
     const ax=aimX-h.x,ay=aimY-h.y,len=Math.hypot(ax,ay)||1;
-    bullets.push({x:h.x+ax/len*15,y:h.y+ay/len*15,vx:ax/len*6.7,vy:ay/len*6.7,life:110});
+    const projectileSpeed=h.role==="elite"?8.1:6.7;
+    bullets.push({x:h.x+ax/len*15,y:h.y+ay/len*15,vx:ax/len*projectileSpeed,vy:ay/len*projectileSpeed,life:110});
+    if(h.role==="elite"){
+     // A short burst is clearly telegraphed by the orange muzzle flash.
+     const perpX=-ay/len,perpY=ax/len;
+     bullets.push({x:h.x,y:h.y,vx:ax/len*projectileSpeed+perpX*.42,vy:ay/len*projectileSpeed+perpY*.42,life:100});
+    }
     particle(h.x,h.y,"#ffd0a0",6);
    }
-   if(d<160||!los){navigate(h,h.goal,d<160?1.65:1.1)}
+   if(d<160||!los){navigate(h,h.goal,d<160?(h.role==="elite"?2.0:1.65):1.1)}
    else if(d<320){
     const strafeX=-dy/dist*h.strafe,strafeY=dx/dist*h.strafe;
     if(!pointBlocked(h.x+strafeX*27,h.y+strafeY*27,h.r+2)){moveBody(h,strafeX*.78,strafeY*.78,h.r)}
     else h.strafe*=-1;
    }else navigate(h,h.goal,.9);
   }else{
-   const pace=danger?Math.min(3.1,1.9+level*.13):.8;
+   const pace=danger?
+    (h.role==="runner"?Math.min(3.15,2.65+level*.09):
+     h.role==="technician"?2.45:h.role==="medic"?2.45:
+     Math.min(2.9,1.9+level*.12)):
+    h.role==="runner"?1.05:.8;
    navigate(h,h.goal,pace);
+   // Medics restore injured colleagues when the corridor is safe.
+   if(h.role==="medic"&&--h.cooldown<=0){
+    let patient=null,need=0;
+    for(const colleague of humans){
+     if(colleague===h||!colleague.alive||colleague.hp>=colleague.maxHp)continue;
+     const dist=Math.hypot(colleague.x-h.x,colleague.y-h.y);
+     if(dist<125&&dist<125-need){patient=colleague;need=125-dist}
+    }
+    if(patient){patient.hp=Math.min(patient.maxHp,patient.hp+1);particle(patient.x,patient.y,"#91ffe1",12)}
+    h.cooldown=92;
+   }
+   // Technicians deploy visible, avoidable slowing pulse emitters.
+   if(h.role==="technician"&&--h.cooldown<=0&&dPlayer<265&&hasSight(h.x,h.y,player.x,player.y)&&traps.length<10){
+    traps.push({x:h.x,y:h.y,charge:50,life:86,r:82,hit:false});
+    particle(h.x,h.y,"#ddabff",15);
+    h.cooldown=270;
+   }
    // Nearby colleagues spread out instead of piling into one spot.
    if(time%2===h.cohort%2){
     for(const other of humans){
@@ -430,6 +467,16 @@ function update(){
   if(hasSight(ally.x,ally.y,nearest.x,nearest.y))navigate(ally,nearest,2.35);
   else navigate(ally,ally.goal,2.05);
   if(Math.hypot(ally.x-nearest.x,ally.y-nearest.y)<ally.r+nearest.r+4){nearest.hp--;if(nearest.hp<=0)infected(nearest)}
+ }
+ for(let i=traps.length-1;i>=0;i--){
+  const trap=traps[i];
+  if(trap.charge>0){trap.charge--;continue}
+  trap.life--;
+  if(trap.life>0&&!trap.hit&&Math.hypot(player.x-trap.x,player.y-trap.y)<trap.r){
+   player.slow=Math.max(player.slow,75);trap.hit=true;
+   particle(player.x,player.y,"#deaeff",10);
+  }
+  if(trap.life<=0)traps.splice(i,1);
  }
  for(let i=bullets.length-1;i>=0;i--){
   const b=bullets[i];b.x+=b.vx;b.y+=b.vy;b.life--;
