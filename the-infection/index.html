@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0c1515"><meta name="description" content="The Infection: escape the lab as a zombie and infect every human.">
+<title>The Infection | HTML GAME CENTER</title>
+<link rel="icon" href="../hub-dog-icon.png" type="image/png">
+<style>
+:root{color-scheme:dark;--bg:#0b1415;--panel:#162729;--edge:#315458;--mint:#aaffb7;--text:#f0f8f1;--muted:#9fb8af}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:#0b1415;overscroll-behavior-y:contain}
+body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);background:radial-gradient(ellipse at 50% -25%,#1b4038 0%,#0b1415 68%)}
+button{font:inherit;cursor:pointer;touch-action:manipulation}
+button:focus-visible,a:focus-visible{outline:2px solid #a9f3be;outline-offset:3px}
+a{color:#b1e9c7;text-decoration:none}
+main{max-width:1040px;margin:auto;padding:clamp(10px,3vw,22px)}
+header{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px}
+header a{font-size:12px;font-weight:800;display:flex;align-items:center;gap:6px}
+header .tag{border:1px solid #446959;color:#aaf3ba;background:#20392f;font-size:10px;letter-spacing:.09em;font-weight:850;border-radius:100px;padding:7px 11px}
+.title{display:flex;align-items:baseline;justify-content:space-between;gap:14px}
+h1{font-size:clamp(28px,5vw,43px);margin:0 0 8px;letter-spacing:-.055em;line-height:1.1}
+h1 span{color:#acffad}
+.subtitle{font-size:12px;color:#a1b9ab;margin:0 0 13px}
+.stage{position:relative;border:1px solid #426a60;border-radius:17px;overflow:hidden;background:#101d22;box-shadow:0 17px 45px #020a0c80}
+canvas{display:block;width:100%;height:auto;aspect-ratio:900/570;touch-action:none;user-select:none}
+.hud{position:absolute;z-index:2;top:11px;left:11px;right:11px;display:flex;justify-content:space-between;gap:6px;pointer-events:none}
+.hud .chip{padding:8px 11px;background:#071716d9;border:1px solid #a6e4c321;border-radius:10px;font-size:11px;letter-spacing:.02em;font-weight:800;backdrop-filter:blur(5px)}
+.chip strong{color:#b8ffb9}
+.hud .right{text-align:right}
+.overlay{position:absolute;z-index:5;inset:0;display:flex;align-items:center;justify-content:center;background:#071310d9;padding:15px;text-align:center;backdrop-filter:blur(5px)}
+.overlay[hidden]{display:none}
+.overlay-panel{width:min(355px,100%);border:1px solid #507b62;background:linear-gradient(160deg,#233d36,#101f22);border-radius:19px;padding:22px 20px;box-shadow:0 12px 32px #0008}
+.overlay-icon{font-size:50px;margin:0 0 6px}
+.overlay h2{font-size:clamp(23px,4vw,32px);letter-spacing:-.045em;margin:0 0 8px}
+.overlay p{font-size:12px;line-height:1.6;color:#bad1c4;margin:0 0 17px}
+.primary{border:1px solid #7ae9ab;background:#376b4a;color:#f0fff0;padding:13px 19px;border-radius:12px;font-weight:850;width:100%;min-height:47px;font-size:14px}
+.primary:hover{background:#487f5b}
+.controls{display:none;align-items:center;justify-content:space-between;gap:15px;margin-top:12px}
+.joystick{position:relative;flex-shrink:0;width:124px;height:124px;border-radius:50%;border:2px solid #527a69;background:radial-gradient(circle,#2f5446 0%,#17322f 70%);touch-action:none;box-shadow:inset 0 3px 14px #05161199}
+.joystick:after{content:"MOVE";position:absolute;bottom:-19px;left:0;right:0;text-align:center;font-size:9px;letter-spacing:.13em;font-weight:800;color:#7fa997}
+.thumb{position:absolute;width:47px;height:47px;border-radius:50%;background:#a7f0ba;border:3px solid #defee2;box-shadow:0 4px 15px #02170988;top:calc(50% - 23.5px);left:calc(50% - 23.5px);pointer-events:none;transition:transform .035s}
+.dash{width:116px;height:100px;max-width:40%;border-radius:23px;border:2px solid #81b198;background:linear-gradient(145deg,#3b6f55,#244735);color:#dfffe7;font-size:15px;font-weight:900}
+.dash:disabled{opacity:.55}
+.hint{font-size:11px;color:#8ba89d;text-align:center;margin:20px 0 7px}
+.footer{font-size:10px;color:#76978c;text-align:center}
+@media(pointer:coarse){.controls{display:flex}}
+@media(max-width:660px){
+ main{padding:9px}
+ header{margin-bottom:8px}
+ header a{font-size:11px}header .tag{font-size:9px;padding:6px}
+ h1{font-size:29px;margin:0 0 4px}.subtitle{font-size:11px;margin-bottom:10px}
+ canvas{aspect-ratio:900/710}
+ .stage{border-radius:13px}
+ .hud{top:7px;left:7px;right:7px}
+ .hud .chip{padding:6px 7px;font-size:10px}
+ .controls{margin:10px 5px 0}
+ .joystick{width:115px;height:115px}
+ .dash{width:113px;height:95px}
+ .hint{margin:19px 0 7px}
+}
+@media(max-height:600px) and (orientation:landscape){canvas{aspect-ratio:900/500}.controls{gap:10px}.joystick{width:90px;height:90px}.dash{height:72px}.hint{display:none}}
+</style>
+</head>
+<body>
+<main>
+<header><a href="../">← GAME CENTER</a><span class="tag">🧟 ESCAPE THE LAB</span></header>
+<h1>The <span>Infection.</span></h1>
+<p class="subtitle">You're Patient Zero. Infect the humans, survive the guards, and escape.</p>
+<section class="stage">
+<canvas id="game" width="900" height="570" aria-label="Top-down zombie infection game"></canvas>
+<div class="hud">
+ <div class="chip">LEVEL <strong id="level">1</strong> · <span id="remaining">4 HUMANS</span></div>
+ <div class="chip right">❤️ <strong id="health">5</strong> <span id="hint">· INFECT ALL</span></div>
+</div>
+<div class="overlay" id="overlay">
+<div class="overlay-panel">
+<div class="overlay-icon" id="overlay-icon">🧟</div>
+<h2 id="overlay-title">THE INFECTION</h2>
+<p id="overlay-desc">Break out of the lab. Walk into humans to infect them. Infected humans join your horde. Guards start fighting back in Level 3.</p>
+<button class="primary" id="play">BEGIN OUTBREAK</button>
+</div>
+</div>
+</section>
+<div class="controls">
+ <div class="joystick" id="joystick" aria-label="Move joystick"><div class="thumb" id="thumb"></div></div>
+ <button class="dash" id="dash" aria-label="Dash">⚡ DASH</button>
+</div>
+<p class="hint">WASD / Arrow Keys to move · SPACE to dash · Touch controls on mobile</p>
+<div class="footer">THE INFECTION · HTML GAME CENTER</div>
+</main>
+<script>
+(()=>{
+"use strict";
+const $=id=>document.querySelector(id),canvas=$("#game"),ctx=canvas.getContext("2d",{alpha:false});
+const VW=900,VH=570,TAU=Math.PI*2;
+const clamp=(a,b,c)=>Math.max(b,Math.min(c,a));
+const rand=(a,b)=>a+Math.random()*(b-a);
+const circle=(x,y,r,fill)=>{ctx.fillStyle=fill;ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill()};
+const keys=new Set(),joy={x:0,y:0,active:false,pointer:null},particles=[];
+let level=1,worldW=1000,worldH=650,walls=[],humans=[],allies=[],bullets=[],player=null,exit=null,cam={x:0,y:0},state="menu",dashReady=0,invuln=0,time=0,last=0,acc=0,screenShake=0,score=0;
+const hud=()=>{$("#level").textContent=level;$("#remaining").textContent=humans.filter(h=>h.alive).length+" HUMANS";$("#health").textContent=player?player.hp:5;$("#hint").textContent=humans.some(h=>h.alive)?"· INFECT ALL":"· EXIT OPEN"};
+function particle(x,y,shade,n=12){
+ for(let i=0;i<n;i++){let a=rand(0,TAU),v=rand(1.1,4);
+ particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-1,life:rand(20,35),shade})}
+ if(particles.length>240)particles.splice(0,particles.length-240);
+}
+function pointBlocked(x,y,r=18){
+ if(x<r+12||x>worldW-r-12||y<r+12||y>worldH-r-12)return true;
+ for(const o of walls){const nearX=clamp(x,o.x,o.x+o.w),nearY=clamp(y,o.y,o.y+o.h);if(Math.hypot(x-nearX,y-nearY)<r+1)return true}
+ return false;
+}
+function relocate(x,y,r=18){
+ for(let k=0;k<120;k++){
+  const a=k===0?{x,y}:{x:rand(65,worldW-65),y:rand(65,worldH-65)};
+  if(!pointBlocked(a.x,a.y,r)&&Math.hypot(a.x-75,a.y-worldH*.5)>160)return a;
+ }
+ return{x:worldW*.65,y:worldH*.5};
+}
+function moveBody(o,dx,dy,r=13){
+ const tx=clamp(o.x+dx,r,worldW-r),ty=clamp(o.y+dy,r,worldH-r);
+ // Sliding AABB circle collision: X and Y resolve independently.
+ if(!pointBlocked(tx,o.y,r))o.x=tx;
+ else if(dx){for(const wall of walls){if(o.y>wall.y-r&&o.y<wall.y+wall.h+r&&o.x+dx+r>wall.x&&o.x+dx-r<wall.x+wall.w){o.x=dx>0?Math.min(o.x,wall.x-r):Math.max(o.x,wall.x+wall.w+r)}}}
+ if(!pointBlocked(o.x,ty,r))o.y=ty;
+ else if(dy){for(const wall of walls){if(o.x>wall.x-r&&o.x<wall.x+wall.w+r&&o.y+dy+r>wall.y&&o.y+dy-r<wall.y+wall.h){o.y=dy>0?Math.min(o.y,wall.y-r):Math.max(o.y,wall.y+wall.h+r)}}}
+ o.x=clamp(o.x,r+2,worldW-r-2);o.y=clamp(o.y,r+2,worldH-r-2);
+}
+function newLevel(n){
+ level=n;worldW=990+(n-1)*155;worldH=635+(n-1)*115;
+ walls=[];humans=[];allies=[];bullets=[];particles.length=0;screenShake=0;invuln=60;dashReady=0;
+ player={x:77,y:worldH*.5,r:16,hp:5,maxHp:5,face:0};
+ exit={x:worldW-63,y:worldH*.5,w:38,h:93};
+ // Scientists left lab benches and glass observation rooms in each larger level.
+ const columns=Math.max(3,Math.ceil(worldW/210));
+ const rows=Math.max(2,Math.ceil(worldH/170));
+ for(let yy=0;yy<rows;yy++)for(let xx=0;xx<columns;xx++){
+  if(xx===0||xx===columns-1&&yy===Math.floor(rows/2))continue;
+  if((xx+yy)%3===1){
+   const x=195+xx*169,y=110+yy*152;
+   if(x+104<worldW-100&&y+62<worldH-55)walls.push({x,y,w:rand(66,102),h:rand(26,48),kind:(xx+yy)%2});
+  }else if((xx+yy)%5===2){
+   const x=230+xx*169,y=84+yy*152;
+   if(x+35<worldW-110&&y+110<worldH-75)walls.push({x,y,w:24,h:rand(68,110),kind:2});
+  }
+ }
+ for(let k=0;k<3+level*2;k++){
+  const pt=relocate(worldW*.53+rand(-150,150),worldH*.4+rand(-190,190));
+  if(Math.hypot(pt.x-player.x,pt.y-player.y)<150)continue;
+  const guard=level>=3&&k<Math.min(level-2,Math.floor((3+level*2)/3)+1);
+  humans.push({x:pt.x,y:pt.y,vx:0,vy:0,guard,alive:true,panic:0,dir:rand(0,TAU),turn:rand(40,110),shot:rand(45,100),hp:guard?2:1,r:14});
+ }
+ if(humans.length===0)humans.push({...relocate(worldW*.6,worldH*.5),vx:0,vy:0,guard:false,alive:true,panic:0,dir:0,turn:100,shot:120,hp:1,r:14});
+ hud();cam.x=0;cam.y=0;
+}
+function overlay(icon,title,desc,button){
+ $("#overlay-icon").textContent=icon;$("#overlay-title").textContent=title;$("#overlay-desc").textContent=desc;$("#play").textContent=button;
+ $("#overlay").hidden=false;
+}
+function start(){
+ if(state==="menu"||state==="dead"||state==="complete"){score=0;newLevel(1)}
+ else if(state==="next")newLevel(level+1);
+ state="running";$("#overlay").hidden=true;last=0;acc=0;
+}
+$("#play").addEventListener("click",start);
+window.addEventListener("keydown",e=>{if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"," "].includes(e.key))e.preventDefault();keys.add(e.key.toLowerCase());if(e.key===" "&&state==="running")dash()});
+window.addEventListener("keyup",e=>keys.delete(e.key.toLowerCase()));
+window.addEventListener("blur",()=>keys.clear());
+function dash(){
+ if(state!=="running"||dashReady>0)return;
+ dashReady=105;
+ const v=input();
+ if(!v.len){let a=player.face;v.x=Math.cos(a);v.y=Math.sin(a)}
+ for(let i=0;i<9;i++){moveBody(player,v.x*10,v.y*10,player.r);particle(player.x,player.y,"#b1ffae",1)}
+ screenShake=5;
+}
+$("#dash").addEventListener("pointerdown",e=>{e.preventDefault();dash()});
+const pad=$("#joystick"),thumb=$("#thumb");
+function updatePad(e){
+ const rect=pad.getBoundingClientRect(),cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
+ const dx=e.clientX-cx,dy=e.clientY-cy,dist=Math.hypot(dx,dy)||1;
+ const radius=rect.width*.30;
+ const amount=Math.min(1,dist/radius);
+ joy.x=dx/dist*amount;joy.y=dy/dist*amount;joy.active=true;
+ thumb.style.transform="translate("+(joy.x*radius)+"px,"+(joy.y*radius)+"px)";
+}
+pad.addEventListener("pointerdown",e=>{e.preventDefault();pad.setPointerCapture(e.pointerId);joy.pointer=e.pointerId;updatePad(e)});
+pad.addEventListener("pointermove",e=>{if(joy.pointer===e.pointerId)updatePad(e)});
+function resetPad(e){if(joy.pointer!==e.pointerId)return;joy.pointer=null;joy.active=false;joy.x=0;joy.y=0;thumb.style.transform="translate(0,0)"}
+pad.addEventListener("pointerup",resetPad);pad.addEventListener("pointercancel",resetPad);pad.addEventListener("lostpointercapture",resetPad);
+function input(){
+ let x=joy.x,y=joy.y;
+ if(keys.has("a")||keys.has("arrowleft"))x-=1;
+ if(keys.has("d")||keys.has("arrowright"))x+=1;
+ if(keys.has("w")||keys.has("arrowup"))y-=1;
+ if(keys.has("s")||keys.has("arrowdown"))y+=1;
+ const len=Math.hypot(x,y);
+ return{x:len>1?x/len:x,y:len>1?y/len:y,len};
+}
+function infected(h){
+ h.alive=false;score+=h.guard?30:10;
+ particle(h.x,h.y,"#aaffaa",20);
+ allies.push({x:h.x,y:h.y,vx:0,vy:0,face:0,r:13});
+ hud();
+}
+function hurt(){
+ if(invuln>0||state!=="running")return;
+ player.hp--;invuln=85;screenShake=11;particle(player.x,player.y,"#ff9f7c",15);hud();
+ if(player.hp<=0){state="dead";overlay("💀","OUTBREAK CONTAINED","The guards stopped you on Level "+level+". Try again and build your horde.","RESTART OUTBREAK")}
+}
+function update(){
+ if(state!=="running")return;
+ time++;if(dashReady>0)dashReady--;if(invuln>0)invuln--;if(screenShake>0)screenShake*=.84;
+ const v=input(),speed=3.3;
+ moveBody(player,v.x*speed,v.y*speed,player.r);
+ if(v.len>.12)player.face=Math.atan2(v.y,v.x);
+ // Players and infected allies infect by touching their targets.
+ for(const h of humans){
+  if(!h.alive)continue;
+  if(Math.hypot(player.x-h.x,player.y-h.y)<player.r+h.r+3){h.hp--;if(h.hp<=0)infected(h);else particle(h.x,h.y,"#f5ce89",6)}
+  if(!h.alive)continue;
+  let threat=player,nearest=Math.hypot(h.x-player.x,h.y-player.y);
+  for(const ally of allies){const d=Math.hypot(h.x-ally.x,h.y-ally.y);if(d<nearest){nearest=d;threat=ally}}
+  if(nearest<220){h.panic=100;const a=Math.atan2(h.y-threat.y,h.x-threat.x);h.dir=a+(Math.sin(time*.035+h.x)*.3)}
+  if(h.guard&&nearest<330){
+   const angle=Math.atan2(player.y-h.y,player.x-h.x),desired=clamp(angle,-Math.PI,Math.PI);
+   h.dir=desired;h.shot--;
+   if(h.shot<=0){h.shot=Math.max(27,104-level*5);const dx=player.x-h.x,dy=player.y-h.y,dist=Math.hypot(dx,dy)||1;bullets.push({x:h.x,y:h.y,vx:dx/dist*6.4,vy:dy/dist*6.4,life:110});particle(h.x,h.y,"#ffcf83",5)}
+  }else{h.turn--;if(h.turn<=0&&h.panic<=0){h.dir+=rand(-2.8,2.8);h.turn=rand(35,110)}}
+  h.panic=Math.max(0,h.panic-1);
+  const pace=h.guard?1.05:h.panic?1.95+level*.07:.64;
+  const oldX=h.x,oldY=h.y;
+  moveBody(h,Math.cos(h.dir)*pace,Math.sin(h.dir)*pace,h.r);
+  if(Math.hypot(oldX-h.x,oldY-h.y)<.15){h.turn=0;h.dir+=Math.PI*.77}
+ }
+ for(const ally of allies){
+  let nearest=null,best=Infinity;
+  for(const h of humans){if(!h.alive)continue;const d=Math.hypot(ally.x-h.x,ally.y-h.y);if(d<best){nearest=h;best=d}}
+  if(!nearest)continue;
+  const a=Math.atan2(nearest.y-ally.y,nearest.x-ally.x);
+  ally.face=a;
+  moveBody(ally,Math.cos(a)*2,Math.sin(a)*2,ally.r);
+  if(best<ally.r+nearest.r+3){nearest.hp--;if(nearest.hp<=0)infected(nearest)}
+ }
+ for(let i=bullets.length-1;i>=0;i--){
+  const b=bullets[i];b.x+=b.vx;b.y+=b.vy;b.life--;
+  if(Math.hypot(b.x-player.x,b.y-player.y)<player.r+4){bullets.splice(i,1);hurt();continue}
+  if(b.life<=0||pointBlocked(b.x,b.y,3)){bullets.splice(i,1);continue}
+ }
+ for(let i=particles.length-1;i>=0;i--){
+  const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.vy+=.04;p.vx*=.97;p.life--;
+  if(p.life<=0)particles.splice(i,1);
+ }
+ if(!humans.some(h=>h.alive)&&Math.abs(player.x-exit.x)<55&&Math.abs(player.y-exit.y)<71){
+  state="next";particle(player.x,player.y,"#b1f4d2",35);
+  overlay("🧪","LEVEL "+level+" CLEARED!","All humans infected. The next lab is bigger and more heavily defended.","NEXT LEVEL →");
+ }
+ cam.x=clamp(player.x-VW/2,0,Math.max(0,worldW-VW));
+ cam.y=clamp(player.y-VH/2,0,Math.max(0,worldH-VH));
+ $("#dash").disabled=dashReady>0;
+ $("#dash").textContent=dashReady>0?"⚡ "+Math.ceil(dashReady/60)+"s":"⚡ DASH";
+}
+function drawGrid(){
+ ctx.fillStyle="#12242a";ctx.fillRect(0,0,VW,VH);
+ const startX=Math.floor(cam.x/60)*60,startY=Math.floor(cam.y/60)*60;
+ ctx.strokeStyle="#82c8b912";ctx.lineWidth=1;ctx.beginPath();
+ for(let x=startX;x<=cam.x+VW+60;x+=60){ctx.moveTo(x-cam.x,0);ctx.lineTo(x-cam.x,VH)}
+ for(let y=startY;y<=cam.y+VH+60;y+=60){ctx.moveTo(0,y-cam.y);ctx.lineTo(VW,y-cam.y)}
+ ctx.stroke();
+ // Lab hallway highlights and atmospheric lights.
+ ctx.fillStyle="#80babb09";
+ for(let i=0;i<8;i++){const x=((i*219)%worldW)-cam.x,y=((i*319)%worldH)-cam.y;ctx.fillRect(x-26,y-26,52,52)}
+}
+function drawHuman(h){
+ const x=h.x-cam.x,y=h.y-cam.y;
+ ctx.save();ctx.translate(x,y);ctx.rotate(h.dir||0);
+ ctx.fillStyle="#040b0e77";ctx.beginPath();ctx.ellipse(0,7,16,9,0,0,TAU);ctx.fill();
+ ctx.fillStyle=h.guard?"#f5a76e":"#8fd0ec";
+ ctx.beginPath();ctx.roundRect(-11,-9,22,22,6);ctx.fill();
+ circle(4,-3,7,"#f7d8b0");
+ ctx.fillStyle="#172a34";ctx.fillRect(9,-5,5,4);
+ if(h.guard){ctx.fillStyle="#f5d68b";ctx.fillRect(-6,-11,13,4)}
+ if(h.panic>40&&!h.guard){ctx.fillStyle="#ffd18c";ctx.font="bold 17px system-ui";ctx.fillText("!",-4,-21)}
+ ctx.restore();
+}
+function drawZombie(z,leader=false){
+ const x=z.x-cam.x,y=z.y-cam.y,r=leader?16:13;
+ ctx.save();ctx.translate(x,y);ctx.rotate(z.face||0);
+ ctx.fillStyle="#010e0a6e";ctx.beginPath();ctx.ellipse(0,7,r+3,r*.7,0,0,TAU);ctx.fill();
+ ctx.fillStyle=leader?"#94f8a2":"#65c89b";
+ ctx.beginPath();ctx.roundRect(-r*.75,-r*.70,r*1.5,r*1.55,6);ctx.fill();
+ circle(r*.28,-r*.13,r*.50,leader?"#c2ffa2":"#96f3be");
+ ctx.fillStyle="#1b4726";ctx.fillRect(3,-7,3,3);ctx.fillRect(3,2,3,3);
+ if(leader){ctx.strokeStyle=invuln>0&&Math.floor(time/5)%2?"#f6ffff69":"#c4ffb6b9";ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(0,0,21,0,TAU);ctx.stroke()}
+ ctx.restore();
+}
+function draw(){
+ const rect=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,1.7);
+ if(rect.width>0&&canvas.width!==Math.round(rect.width*dpr)){canvas.width=Math.max(1,Math.round(rect.width*dpr));canvas.height=Math.max(1,Math.round(rect.height*dpr))}
+ ctx.setTransform(canvas.width/VW,0,0,canvas.height/VH,0,0);
+ ctx.save();
+ if(screenShake>1){ctx.translate(rand(-screenShake,screenShake)*.4,rand(-screenShake,screenShake)*.4)}
+ drawGrid();
+ ctx.strokeStyle="#8babad";ctx.lineWidth=9;ctx.strokeRect(-cam.x,-cam.y,worldW,worldH);
+ for(const o of walls){
+  if(o.x+o.w<cam.x-20||o.x>cam.x+VW+20||o.y+o.h<cam.y-20||o.y>cam.y+VH+20)continue;
+  const x=o.x-cam.x,y=o.y-cam.y;
+  ctx.fillStyle="#020f1699";ctx.fillRect(x+5,y+7,o.w,o.h);
+  ctx.fillStyle=o.kind===2?"#42777e":"#3b5057";
+  ctx.fillRect(x,y,o.w,o.h);
+  ctx.fillStyle=o.kind===2?"#a3d9de59":"#819fa135";
+  ctx.fillRect(x+4,y+4,o.w-8,Math.max(4,o.h*.25));
+  ctx.strokeStyle="#6e9291";ctx.lineWidth=2;ctx.strokeRect(x,y,o.w,o.h);
+ }
+ const unlocked=!humans.some(h=>h.alive);
+ const gx=exit.x-cam.x,gy=exit.y-cam.y;
+ ctx.save();ctx.shadowColor=unlocked?"#9fffbb":"#ff8d79";ctx.shadowBlur=unlocked?22:12;
+ ctx.fillStyle=unlocked?"#70b995":"#905047";ctx.fillRect(gx-20,gy-46,40,92);
+ ctx.fillStyle=unlocked?"#b8ffcb":"#e6a69a";ctx.fillRect(gx-15,gy-41,30,82);
+ ctx.restore();
+ ctx.font="bold 10px system-ui";ctx.fillStyle=unlocked?"#ccffdb":"#ffd8d4";ctx.textAlign="center";
+ ctx.fillText(unlocked?"EXIT":"LOCKED",gx,gy-56);
+ for(const h of humans)if(h.alive)drawHuman(h);
+ for(const ally of allies)drawZombie(ally,false);
+ if(player)drawZombie(player,true);
+ for(const b of bullets){circle(b.x-cam.x,b.y-cam.y,5,"#ffba73");circle(b.x-cam.x,b.y-cam.y,2,"#fff2ca")}
+ for(const p of particles){ctx.globalAlpha=clamp(p.life/30,0,1);circle(p.x-cam.x,p.y-cam.y,2.6,p.shade)}
+ ctx.globalAlpha=1;
+ // Off-screen target indicator for navigation in expanding levels.
+ const nearest=humans.filter(h=>h.alive).sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y))[0]||exit;
+ if(nearest){
+  const tx=nearest.x-cam.x,ty=nearest.y-cam.y;
+  if(tx<35||ty<40||tx>VW-35||ty>VH-35){
+   const nx=clamp(tx,35,VW-35),ny=clamp(ty,45,VH-35);
+   circle(nx,ny,14,unlocked?"#baffb2b9":"#ffd49aad");
+   ctx.font="bold 17px system-ui";ctx.fillStyle="#0c2320";ctx.textAlign="center";ctx.fillText("➜",nx,ny+5);
+  }
+ }
+ ctx.restore();
+}
+function frame(t){
+ if(!last)last=t;
+ const dt=Math.min(.05,(t-last)/1000);last=t;
+ acc=Math.min(.06,acc+dt);
+ if(state==="running"){
+  let i=0;while(acc>=1/60&&i<3){update();acc-=1/60;i++}
+ }else acc=0;
+ draw();
+ requestAnimationFrame(frame);
+}
+newLevel(1);
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
