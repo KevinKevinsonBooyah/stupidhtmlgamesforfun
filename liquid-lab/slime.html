@@ -198,7 +198,7 @@ function down(e){
   const i=body.nodes.indexOf(existing.node);
   node=body.nodes[(i+Math.floor(N/2))%N];
  }
- touches.set(e.pointerId,{body,node,x,y,dx:0,dy:0,ox:x,oy:y,held:0});
+ touches.set(e.pointerId,{body,node,x,y,dx:0,dy:0,ox:x,oy:y,offsetX:node.x-x,offsetY:node.y-y,held:0});
  $("#grabs").textContent=touches.size===2?"✌️ STRETCHING":"☝️ GRABBED";
  $("#hint").textContent=touches.size===2?"Pull harder to tear it!":"Drag the slime";
  sparkle(x,y,5,.6);
@@ -230,7 +230,7 @@ function pinned(p){
 }
 function keepPinned(){
  for(const t of touches.values()){
-  t.node.x=t.x;t.node.y=t.y;
+  t.node.x=t.x+t.offsetX;t.node.y=t.y+t.offsetY;
  }
 }
 function spring(a,b,rest,strength){
@@ -315,6 +315,7 @@ function splitBody(body,t1,t2){
  bodies.push(a,b);
  t1.body=a;t1.node=nearestNode(a,t1.x,t1.y).node;
  t2.body=b;t2.node=nearestNode(b,t2.x,t2.y).node;
+ t1.offsetX=0;t1.offsetY=0;t2.offsetX=0;t2.offsetY=0;
  t1.node.x=t1.x;t1.node.y=t1.y;
  t2.node.x=t2.x;t2.node.y=t2.y;
  tearLines.push({x1:t1.x,y1:t1.y,x2:t2.x,y2:t2.y,life:1});
