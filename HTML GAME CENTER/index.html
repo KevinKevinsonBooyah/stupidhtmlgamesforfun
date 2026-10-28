@@ -76,13 +76,27 @@ footer{color:#7d9998;font-size:11px;margin-top:25px}
 }
 @media(max-width:340px){.featured{grid-template-columns:1fr}.preview{display:none}.hero .orbit{display:none}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* New games share one compact arcade grid instead of mode shortcuts. */
+.game-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-top:13px}
+.game-card{position:relative;overflow:hidden;display:flex;gap:13px;align-items:center;min-height:125px;padding:17px;border:1px solid #42626a;border-radius:16px;background:linear-gradient(145deg,#223a3e,#1a2a32);transition:transform .18s,border-color .18s,background .18s}
+.game-card:hover{transform:translateY(-3px);border-color:#9bd8ce;background:linear-gradient(145deg,#304b4f,#233641)}
+.game-icon{display:grid;place-items:center;width:64px;height:64px;flex-shrink:0;border-radius:17px;font-size:36px;background:linear-gradient(155deg,#4b8669,#24443f);box-shadow:inset 0 1px #ffffff32;animation:floatgame 3.5s ease-in-out infinite}
+.game-card.skydied .game-icon{background:linear-gradient(145deg,#75b8db,#345a8a);animation-delay:-1.5s}
+.game-card strong{font-size:19px;letter-spacing:-.03em;display:block;margin-bottom:5px}
+.game-card p{font-size:12px;color:#aec9c7;line-height:1.42;margin:0}
+.game-card .play-icon{margin-left:auto;color:#c7f1e7;font-size:21px}
+.game-card .eyebrow{display:block;font-size:9px;color:#a5d6cb;letter-spacing:.11em;text-transform:uppercase;font-weight:850;margin-bottom:5px}
+@keyframes floatgame{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-5px) rotate(4deg)}}
+@media(max-width:630px){.game-list{grid-template-columns:1fr;gap:9px}.game-card{min-height:104px;padding:12px}.game-icon{width:57px;height:57px;font-size:29px}.game-card strong{font-size:17px}.game-card p{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.game-icon{animation:none}}
 </style>
 </head>
 <body>
 <main class="shell">
 <header>
  <div class="brand"><img src="../hub-dog-icon.png?v=3" alt="Dog icon"><div><h1>HTML GAME CENTER</h1><p>Little games, big ideas.</p></div></div>
- <span class="count"><i></i> 1 GAME</span>
+ <span class="count"><i></i> 3 GAMES</span>
 </header>
 <section class="hero">
  <div><p class="eyebrow">WELCOME BACK</p><h2>Pick something.<br><span>Make a mess.</span></h2><p class="sub">A collection of browser games and experiments.</p></div>
@@ -90,14 +104,21 @@ footer{color:#7d9998;font-size:11px;margin-top:25px}
 </section>
 <div class="section-line"><h3>Featured game</h3><small>Available now</small></div>
 <a class="featured" href="../liquid-lab/">
- <div><span class="tag">PHYSICS SANDBOX · NEW</span><h4>💧 Liquid Lab</h4><p>Pour water, build ramps, explore different liquids, or stretch and tear slime.</p><span class="play">Play Liquid Lab <span aria-hidden="true">›</span></span></div>
+ <div><span class="tag">PHYSICS SANDBOX</span><h4>💧 Liquid Lab</h4><p>Pour water, build walls, experiment with liquid, and stretch or split slime.</p><span class="play">Play Liquid Lab <span aria-hidden="true">›</span></span></div>
  <div class="preview" aria-hidden="true"><span class="wave"></span><span class="bubble one"></span><span class="bubble two"></span><span class="bubble three"></span><span class="label">FLUID PREVIEW</span></div>
 </a>
-<div class="section-line" style="margin-top:23px"><h3>Jump into a mode</h3><small>Inside Liquid Lab</small></div>
-<div class="modes">
- <a class="mode" href="../liquid-lab/"><div class="mode-icon">🌊</div><div><strong>Simulator</strong><span>Pour, push, build ramps</span></div><span class="arrow">›</span></a>
- <a class="mode" href="../liquid-lab/#templates"><div class="mode-icon">🧪</div><div><strong>Templates</strong><span>Honey, jelly, and more</span></div><span class="arrow">›</span></a>
- <a class="mode" href="../liquid-lab/#slime"><div class="mode-icon">🟢</div><div><strong>Slime</strong><span>Two-finger stretching · Mobile</span></div><span class="arrow">›</span></a>
+<div class="section-line" style="margin-top:23px"><h3>More games</h3><small>Tap to play</small></div>
+<div class="game-list">
+ <a class="game-card infection" href="../the-infection/">
+  <div class="game-icon" aria-hidden="true">🧟</div>
+  <div><span class="eyebrow">ZOMBIE ARCADE</span><strong>The Infection</strong><p>Escape the lab, infect humans, and survive the guards.</p></div>
+  <span class="play-icon" aria-hidden="true">›</span>
+ </a>
+ <a class="game-card skydied" href="../skydied/">
+  <div class="game-icon" aria-hidden="true">🛏️</div>
+  <div><span class="eyebrow">FALLING CHALLENGE</span><strong>Skydied</strong><p>Fall past obstacles and land on the pillow.</p></div>
+  <span class="play-icon" aria-hidden="true">›</span>
+ </a>
 </div>
 <footer>HTML GAME CENTER</footer>
 </main>
