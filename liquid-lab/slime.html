@@ -64,13 +64,22 @@ input[type=range]{width:100%;min-height:24px;accent-color:#8dedb3}
 @media(max-height:700px) and (max-width:500px){.stage canvas{aspect-ratio:700/760}.subtitle{display:none}}
 @media(orientation:landscape) and (max-height:550px){.stage{max-width:min(76vh,480px);margin:auto}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important}}
+
+/* Embedded as the Slime tab inside Liquid Lab, never a second game page. */
+html.embedded,html.embedded body{background:transparent}
+html.embedded main{max-width:710px;padding:0;margin:0 auto}
+html.embedded header,html.embedded h1,html.embedded .subtitle,html.embedded .footer,html.embedded #status{display:none}
+html.embedded .stage{box-shadow:none;border-radius:15px}
+html.embedded .stage canvas{aspect-ratio:700/770}
+html.embedded .controls{margin-top:9px}
+@media(max-width:500px){html.embedded .stage canvas{aspect-ratio:700/840}html.embedded .palette-panel{margin-top:8px}}
 </style>
 </head>
 <body>
 <main>
 <header><a href="./" class="back"><i>←</i><span>LIQUID LAB</span></a><span class="marker">✌️ MOBILE-ONLY</span></header>
 <h1>Slime <span>Mode.</span> 🟢</h1>
-<p class="subtitle">Grab the blob with one finger. Stretch it with two. Squish, wobble, repeat.</p>
+
 <section class="stage">
  <canvas id="slime" aria-label="Slime simulation with two-finger stretch."></canvas>
  <div class="tip"><span id="status">● SOFT BODY LIVE</span><span id="grabs">✋ TOUCH TO GRAB</span></div>
@@ -90,11 +99,14 @@ input[type=range]{width:100%;min-height:24px;accent-color:#8dedb3}
 <div class="range"><div class="label"><label for="viscous">Thickness</label><output id="viscous-val">70%</output></div><input id="viscous" type="range" min="5" max="100" value="70"></div>
 <div class="range"><div class="label"><label for="gravity">Gravity</label><output id="gravity-val">25%</output></div><input id="gravity" type="range" min="0" max="100" value="25"></div>
 </div></details>
-<div class="footer">SLIME MODE · LIQUID LAB · HTML GAME CENTER</div>
+
 </main>
 <script>
 (()=>{
 "use strict";
+const embedded=new URLSearchParams(window.location.search).get("embed")==="1";
+if(!embedded){window.location.replace("./#slime");return}
+document.documentElement.classList.add("embedded");
 const $=s=>document.querySelector(s), canvas=$("#slime"),g=canvas.getContext("2d",{alpha:false});
 const W=700,H=770,N=64,TAU=Math.PI*2,FLOOR=H-57,BASE_X=132,BASE_Y=95;
 const palette={mint:[129,241,179],pink:[255,155,201],violet:[172,155,255],blue:[130,207,255]};
@@ -343,6 +355,7 @@ function draw(){
  }
 }
 function frame(t){
+ if(!running)return;
  let dt=lastTime?Math.min(40,t-lastTime):16.67;lastTime=t;
  dtAccum=Math.min(55,dtAccum+dt);
  let steps=0;
@@ -350,6 +363,23 @@ function frame(t){
  draw();
  requestAnimationFrame(frame);
 }
+let running=true;
+function notifyHeight(){
+ if(!embedded)return;
+ const element=document.querySelector("main");
+ if(!element)return;
+ const height=Math.ceil(element.scrollHeight+3);
+ window.parent.postMessage({type:"liquid-lab:slime-height",height},window.location.origin);
+}
+window.addEventListener("message",event=>{
+ if(event.origin!==window.location.origin)return;
+ const data=event.data;
+ if(!data||data.type!=="liquid-lab:slime-active")return;
+ if(!data.active){running=false}
+ else if(!running){running=true;lastTime=0;requestAnimationFrame(frame)}
+});
+if(window.ResizeObserver)new ResizeObserver(notifyHeight).observe(document.querySelector("main"));
+requestAnimationFrame(notifyHeight);
 if(mobile)requestAnimationFrame(frame);
 $("#reset").addEventListener("click",()=>{reset();burst(centerState.x,centerState.y,14)});
 $("#squish").addEventListener("click",()=>{
