@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#152c44"><meta name="description" content="Skydied: dodge obstacles while falling from a skyscraper and aim for a pillow.">
+<title>Skydied | HTML GAME CENTER</title><link rel="icon" href="../hub-dog-icon.png">
+<style>
+:root{color-scheme:dark;--ink:#eaf8ff;--panel:#163b58;--edge:#467d9b;--soft:#badbec}
+*{box-sizing:border-box}
+html,body{margin:0;background:#10283b;overscroll-behavior-y:contain;min-height:100%}
+body{background:radial-gradient(ellipse at 50% -20%,#37628e,#10283b 70%);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink)}
+a{color:#d4edfa;text-decoration:none}button{font:inherit;cursor:pointer;touch-action:manipulation}
+button:focus-visible,a:focus-visible{outline:2px solid #b3eeff;outline-offset:3px}
+main{width:min(560px,100%);margin:auto;padding:12px 11px 28px}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+header a{font-size:12px;font-weight:850}header span{font-size:10px;border:1px solid #5f9cb7;background:#224764;color:#bdecff;border-radius:99px;padding:7px 11px;letter-spacing:.06em;font-weight:850}
+h1{font-size:clamp(31px,6vw,42px);letter-spacing:-.055em;margin:0 0 4px}
+h1 em{font-style:normal;color:#a0e4ff}
+.subtitle{font-size:11px;color:#b6d2e4;margin:0 0 10px}
+.stage{position:relative;overflow:hidden;background:#6d9dbe;border:1px solid #7babca;border-radius:19px;box-shadow:0 20px 48px #06192999}
+canvas{display:block;width:100%;height:auto;aspect-ratio:500/750;touch-action:none;user-select:none}
+.hud{position:absolute;top:10px;left:9px;right:9px;display:flex;justify-content:space-between;align-items:start;gap:6px;pointer-events:none}
+.hud .left,.hud .right{display:flex;gap:5px;flex-wrap:wrap}
+.hud .right{justify-content:flex-end}
+.chip{border:1px solid #ffffff40;background:#092c49c9;padding:7px 9px;border-radius:10px;font-size:10px;font-weight:800;color:#e9f9ff;white-space:nowrap;backdrop-filter:blur(6px)}
+.chip strong{color:#c9f8ff}
+.progress{position:absolute;top:46px;left:10px;right:10px;height:5px;background:#123b5f98;border-radius:99px;overflow:hidden;pointer-events:none}
+.progress div{height:100%;background:linear-gradient(90deg,#a4dfff,#f8efff);width:0;border-radius:99px;transition:width .1s}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;background:#102946c7;z-index:5;padding:18px;backdrop-filter:blur(5px)}
+.overlay[hidden]{display:none}
+.dialog{border-radius:20px;border:1px solid #84c4e5;background:linear-gradient(150deg,#234b72,#15364e);box-shadow:0 15px 33px #04101d9a;width:min(340px,100%);text-align:center;padding:24px 20px}
+.dialog .emoji{font-size:53px;margin-bottom:8px}
+.dialog h2{font-size:clamp(25px,5vw,34px);margin:0 0 7px;letter-spacing:-.05em}
+.dialog p{font-size:12px;color:#d0e9f6;line-height:1.6;margin:0 0 16px}
+.dialog button{background:#b9edff;border:1px solid #f1ffff;color:#12324d;width:100%;min-height:48px;font-weight:900;font-size:14px;border-radius:12px}
+.dialog button:active{transform:scale(.98)}
+.touch{display:none;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-top:11px}
+.touch button{min-height:65px;border:1px solid #77a9c6;border-radius:15px;background:linear-gradient(150deg,#315c78,#1f425b);color:#ecf8ff;font-weight:900;font-size:21px;user-select:none;-webkit-user-select:none}
+.touch button.brake{font-size:13px;background:linear-gradient(150deg,#3d6988,#284767)}
+.touch button:active,.touch button.held{background:#5d93ad;border-color:#c1eeff}
+.legend{font-size:11px;color:#abcbdc;text-align:center;margin-top:12px}
+@media(pointer:coarse){.touch{display:grid}}
+@media(max-width:540px){main{padding:9px 8px 21px}header{margin-bottom:6px}h1{font-size:30px}.subtitle{font-size:10px}.stage{border-radius:14px}.chip{padding:6px 7px;font-size:9px}.progress{top:39px}.touch{gap:7px;margin-top:9px}.touch button{min-height:60px}.legend{font-size:10px}}
+@media(max-height:750px) and (max-width:540px){canvas{aspect-ratio:500/690}.touch button{min-height:55px}}
+</style>
+</head>
+<body>
+<main>
+<header><a href="../">← GAME CENTER</a><span>☁️ EXTREME PILLOW SPORTS</span></header>
+<h1>Sky<em>died.</em></h1>
+<p class="subtitle">Fall from the skyscraper. Dodge everything. Land on the pillow. Somehow.</p>
+<section class="stage">
+ <canvas id="game" width="500" height="750" aria-label="Skydied falling and dodging game"></canvas>
+ <div class="hud">
+  <div class="left"><span class="chip">LEVEL <strong id="level">1</strong></span><span class="chip">❤️ <strong id="health">3</strong></span></div>
+  <div class="right"><span class="chip">⬇ <strong id="distance">0</strong>m</span><span class="chip" id="wind">WIND →</span></div>
+ </div>
+ <div class="progress"><div id="progress"></div></div>
+ <div class="overlay" id="overlay">
+  <div class="dialog"><div class="emoji" id="icon">🏙️</div><h2 id="title">SKYDIED</h2><p id="description">Jump off a skyscraper, steer around obstacles, and land on the giant pillow below. Hold BRAKE to slow your fall.</p><button id="play">JUMP!</button></div>
+ </div>
+</section>
+<div class="touch">
+ <button id="left" aria-label="Steer left">◀</button>
+ <button class="brake" id="brake" aria-label="Air brake">🪂 BRAKE</button>
+ <button id="right" aria-label="Steer right">▶</button>
+</div>
+<div class="legend">A / D or ← / → to steer · SPACE or ↓ to brake · On-screen buttons on mobile</div>
+</main>
+<script>
+(()=>{
+"use strict";
+const $=s=>document.querySelector(s),c=$("#game"),g=c.getContext("2d",{alpha:false}),SW=500,SH=750,TAU=Math.PI*2;
+const clamp=(n,a,b)=>Math.max(a,Math.min(b,n)),rand=(a,b)=>a+Math.random()*(b-a);
+const inputs={left:false,right:false,brake:false},keys=new Set();
+let level=1,groundY=2250,player=null,camY=-100,pillow=null,obstacles=[],specks=[],stars=[],clouds=[],state="menu",time=0,last=0,acc=0,invuln=0,shake=0,wind=0,landedTimer=0,score=0;
+function circle(x,y,r,col){g.fillStyle=col;g.beginPath();g.arc(x,y,r,0,TAU);g.fill()}
+function spawnFX(x,y,col,n=18,force=1){
+ for(let i=0;i<n;i++){const a=rand(0,TAU),v=rand(1,5)*force;specks.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-1,life:rand(20,45),col})}
+ if(specks.length>170)specks.splice(0,specks.length-170);
+}
+function generateLevel(n){
+ level=n;groundY=2350+(n-1)*390;camY=-100;obstacles=[];specks=[];stars=[];clouds=[];time=0;invuln=0;shake=0;landedTimer=0;
+ pillow={x:clamp(250+Math.sin(n*2.3)*100,145,355),w:119-(n>4?10:0)};
+ player={x:250,y:28,vx:0,vy:1.8,r:16,hp:3,spin:0,face:0};
+ wind=level===1?0:Math.sin(n*2.4)*(.05+.027*Math.min(level,9));
+ let gap=195-Math.min(55,level*8),y=250,k=0;
+ while(y<groundY-220){
+  const type=["bird","drone","sign","scaffold","antenna","kite"][(k+Math.floor(rand(0,5)))%6];
+  const size=type==="scaffold"?125:type==="sign"?95:type==="antenna"?90:45;
+  const x=rand(90,410);
+  obstacles.push({type,x:clamp(x,85+size*.5,415-size*.5),y,w:size,h:type==="scaffold"?27:type==="sign"?53:type==="antenna"?24:38,vx:rand(.4,1.5)*(k%2?-1:1),phase:rand(0,TAU),hit:false});
+  if(level>=4&&k%3===2){
+   const ox=x>250?115:385;
+   obstacles.push({type:"bird",x:ox,y:y+72,w:39,h:28,vx:rand(.5,1.5),phase:rand(0,TAU),hit:false});
+  }
+  y+=gap+rand(-43,52);k++;
+ }
+ for(let i=0;i<27;i++)clouds.push({x:rand(30,470),y:rand(70,groundY),radius:rand(25,75),shade:Math.random()});
+ $("#level").textContent=level;$("#health").textContent=player.hp;$("#distance").textContent=Math.round(groundY/10);
+ $("#progress").style.width="0%";$("#wind").textContent=Math.abs(wind)<.01?"CALM":wind>0?"WIND →":"← WIND";
+}
+function dialog(icon,title,description,button){
+ $("#icon").textContent=icon;$("#title").textContent=title;$("#description").textContent=description;$("#play").textContent=button;$("#overlay").hidden=false;
+}
+function start(){
+ if(state==="next"){generateLevel(level+1)}
+ else if(state==="dead"||state==="miss"||state==="menu"){generateLevel(state==="menu"?1:level)}
+ state="falling";$("#overlay").hidden=true;acc=0;last=0;
+}
+$("#play").addEventListener("click",start);
+function resetButtons(){inputs.left=false;inputs.right=false;inputs.brake=false;for(const e of document.querySelectorAll(".touch button"))e.classList.remove("held")}
+function setupHold(id,field){
+ const el=$("#"+id);let pointerId=null;
+ function down(e){e.preventDefault();if(pointerId!==null)return;pointerId=e.pointerId;el.setPointerCapture(e.pointerId);inputs[field]=true;el.classList.add("held")}
+ function up(e){if(pointerId!==e.pointerId)return;pointerId=null;inputs[field]=false;el.classList.remove("held")}
+ el.addEventListener("pointerdown",down);el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up);el.addEventListener("lostpointercapture",up);
+}
+setupHold("left","left");setupHold("right","right");setupHold("brake","brake");
+window.addEventListener("keydown",e=>{
+ const key=e.key.toLowerCase();if(["arrowleft","arrowright","arrowdown"," ","a","d","s"].includes(key))e.preventDefault();keys.add(key)
+});
+window.addEventListener("keyup",e=>keys.delete(e.key.toLowerCase()));
+window.addEventListener("blur",()=>{keys.clear();resetButtons()});
+function steer(){return (inputs.right||keys.has("d")||keys.has("arrowright")?1:0)-(inputs.left||keys.has("a")||keys.has("arrowleft")?1:0)}
+function braking(){return inputs.brake||keys.has(" ")||keys.has("arrowdown")||keys.has("s")}
+function collideObstacle(o){
+ const dx=Math.abs(player.x-o.x),dy=Math.abs(player.y-o.y);
+ return dx<o.w*.5+player.r*.68&&dy<o.h*.5+player.r*.8;
+}
+function hit(o){
+ if(invuln>0)return;
+ invuln=63;player.hp--;$("#health").textContent=player.hp;
+ player.vx+=(player.x>=o.x?5:-5);player.vy=Math.max(2,player.vy*.4);shake=10;
+ spawnFX(player.x,player.y,"#ffe2a4",19,1.2);
+ if(player.hp<=0){
+  state="dead";dialog("💫","TOO MANY BONKS","That was not a soft landing. Try the jump again.","TRY AGAIN");
+ }
+}
+function landing(){
+ const safe=Math.abs(player.x-pillow.x)<pillow.w*.5+8;
+ if(safe&&player.hp>0){
+  state="landed";landedTimer=70;
+  player.y=groundY-33;player.vy=0;player.vx=0;
+  score+=100+player.hp*50+Math.max(0,level-1)*20;
+  spawnFX(pillow.x,groundY-22,"#f6e6ff",48,1.5);
+ }else{
+  state="miss";player.y=groundY-21;
+  dialog("🫠","MISSED THE PILLOW","You made it all the way down and missed the one soft thing. Aim for the pillow next time.","RETRY LEVEL");
+ }
+}
+function update(){
+ time++;if(invuln>0)invuln--;if(shake>0)shake*=.83;
+ if(state==="landed"){
+  landedTimer--;
+  for(const p of specks){p.x+=p.vx;p.y+=p.vy;p.vy+=.11;p.life--}
+  if(landedTimer===0){state="next";dialog("🛏️","PILLOW PERFECT!","Level "+level+" cleared! The next jump has more hazards and a longer fall.","NEXT SKYSCRAPER →")}
+  return;
+ }
+ if(state!=="falling")return;
+ const direction=steer(),brake=braking();
+ const ax=direction*.29+wind*(brake?.42:1);
+ player.vx=clamp((player.vx+ax)*.971,-4.8,4.8);
+ const maxSpeed=brake?4.8:10.7+Math.min(level,9)*.4;
+ player.vy=clamp(player.vy+(brake?.035:.19),.9,maxSpeed);
+ player.x+=player.vx;player.y+=player.vy;
+ player.x=clamp(player.x,70,430);
+ if(player.x===70||player.x===430)player.vx*=.15;
+ player.spin+=player.vx*.007;player.spin*=.92;
+ // Wind-driven moving hazards become trickier on later skyscrapers.
+ for(const o of obstacles){
+  if(o.type==="bird"||o.type==="drone"||o.type==="kite"){
+   o.x+=o.vx*(.75+level*.055);
+   if(o.x<80+o.w/2||o.x>420-o.w/2){o.vx*=-1;o.x=clamp(o.x,80+o.w/2,420-o.w/2)}
+  }
+  if(Math.abs(o.y-player.y)>80)continue;
+  if(collideObstacle(o)&&!o.hit){o.hit=true;hit(o)}
+ }
+ if(player.y>=groundY-38&&state==="falling")landing();
+ for(let i=specks.length-1;i>=0;i--){const p=specks[i];p.x+=p.vx;p.y+=p.vy;p.vy+=.07;p.life--;if(p.life<=0)specks.splice(i,1)}
+ // Camera follows falling subject while showing more space below.
+ const target=clamp(player.y-235,-115,Math.max(-115,groundY-SH+110));
+ camY+=(target-camY)*.13;
+ $("#distance").textContent=Math.max(0,Math.ceil((groundY-player.y)/10));
+ $("#progress").style.width=(clamp(player.y/groundY*100,0,100)).toFixed(1)+"%";
+}
+function cloud(x,y,r,alpha){
+ g.fillStyle="rgba(232,249,255,"+alpha+")";g.beginPath();
+ g.ellipse(x-r*.45,y,r*.6,r*.33,0,0,TAU);
+ g.ellipse(x,y-r*.12,r*.6,r*.45,0,0,TAU);
+ g.ellipse(x+r*.45,y,r*.6,r*.31,0,0,TAU);g.fill();
+}
+function background(){
+ const grad=g.createLinearGradient(0,0,0,SH);grad.addColorStop(0,"#3972a4");grad.addColorStop(.52,"#70a5c8");grad.addColorStop(1,"#9ac0d2");
+ g.fillStyle=grad;g.fillRect(0,0,SW,SH);
+ // Vertically scrolling skyline, windows and building edges.
+ for(let side=0;side<2;side++){
+  const left=side===0;
+  const bx=left?0:435,bw=65;
+  g.fillStyle=left?"#263a59":"#31486a";g.fillRect(bx,0,bw,SH);
+  g.fillStyle="#bedff18a";g.fillRect(left?59:435,0,4,SH);
+  for(let y=Math.floor(camY/84)*84;y<camY+SH+90;y+=84){
+   for(let x=bx+9;x<bx+bw-10;x+=21){
+    g.fillStyle=(Math.floor(y/84+x/15)%4===0)?"#ffddaa77":"#9ad4f65a";
+    g.fillRect(x,y-camY+13,13,28);
+   }
+  }
+ }
+ for(const o of clouds){const sy=o.y-camY*.35;if(sy>-100&&sy<SH+100)cloud(o.x*.75+65,sy,o.radius*.62,.16+o.shade*.15)}
+ for(let k=0;k<12;k++){const y=(k*139-camY*.86)%(SH+130);g.strokeStyle="#e2f9ff25";g.lineWidth=2;g.beginPath();g.moveTo(95+(k*47)%310,y);g.lineTo(95+(k*47)%310,y+38);g.stroke()}
+}
+function drawObstacle(o){
+ const x=o.x,y=o.y-camY;
+ if(y<-100||y>SH+100)return;
+ g.save();g.translate(x,y);
+ if(o.type==="bird"){
+  g.strokeStyle="#30414e";g.lineWidth=4;g.lineCap="round";
+  const flap=Math.sin(time*.22+o.phase)*9;
+  g.beginPath();g.moveTo(-24,-4);g.quadraticCurveTo(-9,flap,0,1);g.quadraticCurveTo(9,flap,24,-4);g.stroke();
+  circle(-3,4,4,"#263744");
+ }else if(o.type==="drone"){
+  g.fillStyle="#3e647b";g.fillRect(-20,-12,40,22);
+  g.fillStyle="#294a61";g.fillRect(-29,-16,58,7);
+  circle(0,0,7,"#8fe9ec");
+  g.strokeStyle="#e6faff";g.lineWidth=3;for(const sign of [-1,1]){g.beginPath();g.moveTo(sign*20,-20);g.lineTo(sign*35,-20);g.stroke()}
+ }else if(o.type==="scaffold"){
+  g.fillStyle="#cfaa81";g.fillRect(-o.w/2,-10,o.w,20);
+  g.fillStyle="#d5e6e7";g.fillRect(-o.w/2,-13,o.w,4);
+  g.strokeStyle="#7b8995";g.lineWidth=4;g.beginPath();g.moveTo(-o.w/2,13);g.lineTo(-o.w/2+18,33);g.moveTo(o.w/2,13);g.lineTo(o.w/2-18,33);g.stroke();
+ }else if(o.type==="sign"){
+  g.fillStyle="#ca7593";g.fillRect(-o.w/2,-o.h/2,o.w,o.h);
+  g.strokeStyle="#f3c8d8";g.lineWidth=4;g.strokeRect(-o.w/2,-o.h/2,o.w,o.h);
+  g.fillStyle="#fff0f8";g.font="bold 11px system-ui";g.textAlign="center";g.fillText("LOOK OUT!",0,4);
+ }else if(o.type==="antenna"){
+  g.strokeStyle="#52677e";g.lineWidth=6;g.beginPath();g.moveTo(-o.w/2,0);g.lineTo(o.w/2,0);g.moveTo(0,-22);g.lineTo(0,24);g.stroke();
+  circle(0,-22,7,"#ff9884");
+ }else{
+  g.fillStyle="#fcd6a0";g.beginPath();g.ellipse(0,0,20,15,.25,0,TAU);g.fill();
+  g.strokeStyle="#ffebc6";g.beginPath();g.moveTo(-8,8);g.lineTo(-14,23);g.moveTo(8,8);g.lineTo(14,23);g.stroke();
+ }
+ g.restore();
+}
+function drawPerson(){
+ const x=player.x,y=player.y-camY;
+ g.save();g.translate(x,y);g.rotate(player.spin);
+ if(invuln>0&&Math.floor(time/4)%2)g.globalAlpha=.45;
+ // Cartoon skydiver with flailing arms and legs.
+ const wiggle=Math.sin(time*.19)*.2;
+ g.strokeStyle="#263955";g.lineWidth=5;g.lineCap="round";
+ g.beginPath();g.moveTo(0,-4);g.lineTo(-12,-20+wiggle*14);g.moveTo(0,-4);g.lineTo(14,-19-wiggle*14);
+ g.moveTo(0,12);g.lineTo(-10,26+wiggle*14);g.moveTo(0,12);g.lineTo(13,25-wiggle*14);g.stroke();
+ g.fillStyle="#ffbb77";g.beginPath();g.roundRect(-10,-8,20,25,6);g.fill();
+ circle(0,-17,11,"#ffdfba");circle(4,-19,2,"#203a53");circle(-3,-19,2,"#203a53");
+ g.fillStyle="#4a6d8d";g.beginPath();g.arc(0,-26,10,Math.PI,TAU);g.fill();
+ if(braking()){g.strokeStyle="#d3f7ffb9";g.lineWidth=2;g.beginPath();g.arc(0,-6,29,Math.PI*.15,Math.PI*.85);g.stroke()}
+ g.restore();
+}
+function draw(){
+ const box=c.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,1.7);
+ if(box.width>0){const width=Math.round(box.width*dpr),height=Math.round(box.height*dpr);if(c.width!==width||c.height!==height){c.width=width;c.height=height}}
+ g.setTransform(c.width/SW,0,0,c.height/SH,0,0);
+ g.save();
+ if(shake>1)g.translate(rand(-shake,shake)*.5,rand(-shake,shake)*.5);
+ background();
+ for(const o of obstacles)drawObstacle(o);
+ const ground=groundY-camY;
+ if(ground<SH+120){
+  g.fillStyle="#395b63";g.fillRect(0,ground,SW,SH-ground+20);
+  g.fillStyle="#7ab69b";g.fillRect(66,ground,369,18);
+  const x=pillow.x,w=pillow.w,py=ground-7;
+  g.save();
+  g.shadowColor="#fff0ff";g.shadowBlur=23;
+  g.fillStyle="#ffe3fb";g.beginPath();g.ellipse(x,py,w*.58,24,0,0,TAU);g.fill();
+  g.restore();
+  g.fillStyle="#ffffffaa";g.beginPath();g.ellipse(x-w*.18,py-9,w*.21,6,-.13,0,TAU);g.fill();
+  g.fillStyle="#7e648c";g.font="bold 15px system-ui";g.textAlign="center";g.fillText("PILLOW",x,py+5);
+  if(player.y>groundY-720){
+   g.fillStyle="#fffaff";g.font="bold 13px system-ui";g.fillText("↓ AIM HERE ↓",x,py-47);
+  }
+ }
+ for(const p of specks){g.globalAlpha=clamp(p.life/35,0,1);circle(p.x,p.y-camY,3,p.col)}g.globalAlpha=1;
+ if(player)drawPerson();
+ if(state==="falling"&&ground>SH+120){
+  const rel=Math.max(0,groundY-player.y);
+  if(rel<900){
+   g.fillStyle="#f4eeffb7";g.font="bold 12px system-ui";g.textAlign="center";
+   g.fillText("PILLOW: "+(pillow.x<player.x?"←":"→"),clamp(pillow.x,90,410),SH-75);
+  }
+ }
+ g.restore();
+}
+function frame(t){
+ if(!last)last=t;
+ const dt=Math.min(.06,(t-last)/1000);last=t;
+ acc=Math.min(.06,acc+dt);
+ if(state==="falling"||state==="landed"){let count=0;while(acc>=1/60&&count<3){update();acc-=1/60;count++}}
+ else acc=0;
+ draw();
+ requestAnimationFrame(frame);
+}
+generateLevel(1);
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
