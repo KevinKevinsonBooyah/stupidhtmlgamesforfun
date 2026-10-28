@@ -159,6 +159,11 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
  .template-card small{font-size:10px}
 }
 @media(max-width:600px) and (pointer:fine){.mobile-mode{display:none}}
+
+.mode-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-width:440px;gap:6px}
+@media(max-width:600px){
+ .mode-nav{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 </style>
 </head>
 <body>
@@ -168,7 +173,6 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 <nav class="mode-nav" aria-label="Liquid Lab modes">
 <button type="button" class="mode-tab active" id="nav-sim" aria-pressed="true">💧 Simulator</button>
 <button type="button" class="mode-tab" id="nav-templates" aria-pressed="false">🧪 Templates</button>
-<button type="button" class="mode-tab mobile-mode" id="nav-slime" aria-pressed="false">🟢 Slime</button>
 </nav>
 <section id="templates-view" class="templates-view" hidden>
  <div class="templates-head"><h2>Templates</h2></div>
@@ -219,9 +223,6 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 </div><div class="reset-options"><button class="reset-settings" id="reset-settings">↺ Reset settings</button></div></div></details>
 <section class="panel palette-panel"><h2>Color</h2><div class="colors"><button class="color active" data-color="ocean" aria-label="Ocean blue" title="Ocean blue" style="--swatch:#6bcaff"><i></i></button><button class="color" data-color="mint" aria-label="Mint green" title="Mint green" style="--swatch:#6ff5c0"><i></i></button><button class="color" data-color="purple" aria-label="Plasma purple" title="Plasma purple" style="--swatch:#b799ff"><i></i></button><button class="color" data-color="lava" aria-label="Lava orange" title="Lava orange" style="--swatch:#ff986b"><i></i></button></div></section>
 </div></div>
-<section id="slime-view" class="slime-view" hidden aria-label="Slime Mode">
- <iframe id="slime-frame" title="Slime Mode" loading="lazy"></iframe>
-</section>
 </div>
 <script>
 (() => {
@@ -791,54 +792,28 @@ const presets={
  jelly:{velocity:5,angle:110,gravity:.24,viscosity:94,pressure:100,bounce:78,flow:6,brush:55,speed:1},
  slow:{velocity:9,angle:45,gravity:.26,viscosity:39,pressure:67,bounce:19,flow:7,brush:50,speed:.35}
 };
-const slimeFrame=$("#slime-frame");
-let slimeLoaded=false;
 function showSection(section,changeUrl=true){
- if(section==="slime"&&!(window.matchMedia&&window.matchMedia("(pointer:coarse)").matches))section="sim";
- if(!["sim","templates","slime"].includes(section))section="sim";
- const templates=section==="templates",slime=section==="slime";
+ const templates=section==="templates";
  $("#templates-view").hidden=!templates;
- $("#sim-workspace").hidden=templates||slime;
- $("#slime-view").hidden=!slime;
- for(const [mode,id] of [["sim","#nav-sim"],["templates","#nav-templates"],["slime","#nav-slime"]]){
+ $("#sim-workspace").hidden=templates;
+ for(const [mode,id] of [["sim","#nav-sim"],["templates","#nav-templates"]]){
   const element=$(id);
   element.classList.toggle("active",mode===section);
   element.setAttribute("aria-pressed",String(mode===section));
  }
- if(slime&&!slimeLoaded){slimeFrame.src="./slime.html?embed=1";slimeLoaded=true}
- if(slimeLoaded&&slimeFrame.contentWindow){
-  slimeFrame.contentWindow.postMessage({type:"liquid-lab:slime-active",active:slime},window.location.origin);
- }
- if(!slime){liquidDirty=true;remaining=0}
- if(section==="sim"){
-  needsRenderRecovery=true;
+ if(!templates){
+  liquidDirty=true;remaining=0;needsRenderRecovery=true;
   restoreCanvas(true);
   requestAnimationFrame(()=>restoreCanvas(true));
  }
  if(changeUrl&&window.history&&window.history.replaceState){
-  const fragment=section==="sim"?"":"#"+section;
+  const fragment=templates?"#templates":"";
   window.history.replaceState(null,"",window.location.pathname+window.location.search+fragment);
  }
 }
 $("#nav-sim").addEventListener("click",()=>showSection("sim"));
 $("#nav-templates").addEventListener("click",()=>showSection("templates"));
-$("#nav-slime").addEventListener("click",()=>showSection("slime"));
-slimeFrame.addEventListener("load",()=>{
- if(slimeFrame.contentWindow)slimeFrame.contentWindow.postMessage({
-  type:"liquid-lab:slime-active",active:!$("#slime-view").hidden
- },window.location.origin);
-});
-window.addEventListener("message",event=>{
- if(event.origin!==window.location.origin||event.source!==slimeFrame.contentWindow)return;
- const data=event.data;
- if(data&&data.type==="liquid-lab:slime-height"&&Number.isFinite(data.height)){
-  slimeFrame.style.height=Math.min(2100,Math.max(320,data.height))+"px";
- }
-});
-window.addEventListener("hashchange",()=>{
- const mode=window.location.hash.slice(1);
- showSection(mode==="slime"||mode==="templates"?mode:"sim",false);
-});
+window.addEventListener("hashchange",()=>showSection(window.location.hash==="#templates"?"templates":"sim",false));
 document.querySelectorAll("[data-preset]").forEach(b=>b.addEventListener("click",()=>{
  Object.assign(settings,presets[b.dataset.preset]);refresh();
  document.querySelectorAll(".preset").forEach(e=>e.classList.toggle("active",e===b));
@@ -901,7 +876,7 @@ $("#reset-settings").addEventListener("click",()=>{
 $("#clear").addEventListener("click",()=>{particles=[];walls=[];rebuildWallBuckets();liquidDirty=true;$("#count").textContent="0"});
 refresh();
 if(window.matchMedia&&window.matchMedia("(max-width:600px)").matches)$("#physics-panel").open=false;
-showSection(window.location.hash==="#slime"?"slime":window.location.hash==="#templates"?"templates":"sim",false);
+showSection(window.location.hash==="#templates"?"templates":"sim",false);
 })();
 </script>
 </body></html>
